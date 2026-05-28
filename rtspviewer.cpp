@@ -40,7 +40,7 @@ void RtspViewer::play() {
     m_player->setVideoOutput(m_videoWidget);
     m_player->setMedia(QUrl(m_url));
     
-    connect(m_player, &QMediaPlayer::error, this, [](QMediaPlayer::Error error) {
+    connect(m_player, QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error), this, [](QMediaPlayer::Error error) {
         qWarning() << "MediaPlayer error:" << error;
     });
     
