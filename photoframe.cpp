@@ -1,5 +1,6 @@
 #include "photoframe.h"
 #include "imagedisplay.h"
+#include "rtspviewer.h"
 #include "playlistmanager.h"
 
 #include <QtWidgets>
@@ -36,17 +37,22 @@ PhotoFrame::PhotoFrame() {
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &PhotoFrame::nextSlide);
 
-    m_playlist = PlaylistManager::load();
-    if (!m_playlist.isEmpty()) {
-        if (m_config.shuffle)
-            std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
-        checkSchedule();
-        if (!m_isSleeping) {
-            m_timer->start(m_config.interval);
-            QTimer::singleShot(500, this, &PhotoFrame::nextSlide);
-        }
+    // Проверяем, настроена ли RTSP камера
+    if (m_config.useRtsp && !m_config.rtspUrl.isEmpty()) {
+        startRtspStream();
     } else {
-        QTimer::singleShot(1000, this, &PhotoFrame::connectAndScan);
+        m_playlist = PlaylistManager::load();
+        if (!m_playlist.isEmpty()) {
+            if (m_config.shuffle)
+                std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
+            checkSchedule();
+            if (!m_isSleeping) {
+                m_timer->start(m_config.interval);
+                QTimer::singleShot(500, this, &PhotoFrame::nextSlide);
+            }
+        } else {
+            QTimer::singleShot(1000, this, &PhotoFrame::connectAndScan);
+        }
     }
 }
 
@@ -61,8 +67,12 @@ void PhotoFrame::setupUi() {
 
     m_viewA = new ImageDisplay;
     m_viewB = new ImageDisplay;
+    m_rtspViewer = new RtspViewer;
+    m_rtspViewer->hide();
+    
     m_stack->addWidget(m_viewA);
     m_stack->addWidget(m_viewB);
+    m_stack->addWidget(m_rtspViewer);
 
     for (auto* v : {m_viewA, m_viewB}) {
         auto* eff = new QGraphicsOpacityEffect(v);
@@ -319,6 +329,8 @@ void PhotoFrame::keyPressEvent(QKeyEvent* e) {
         prevSlide();
     if (e->key() == Qt::Key_Space)
         mouseReleaseEvent(nullptr);
+    if (e->key() == Qt::Key_V)
+        toggleRtspView();  // Переключение режима RTSP
     if (e->key() == Qt::Key_Q)
         qApp->quit();
 }
@@ -346,6 +358,12 @@ void PhotoFrame::showSettings() {
     wake->setDisplayFormat("HH:mm");
     QTimeEdit *sleep = new QTimeEdit(m_config.sleepTime);
     sleep->setDisplayFormat("HH:mm");
+    
+    // RTSP камера
+    QCheckBox *rtspEnable = new QCheckBox("Показывать видео с RTSP камеры");
+    rtspEnable->setChecked(m_config.useRtsp);
+    QLineEdit *rtspUrlEdit = new QLineEdit(m_config.rtspUrl);
+    rtspUrlEdit->setPlaceholderText("rtsp://username:password@ip:port/stream");
 
     f.addRow("Сервер/IP:", srv);
     f.addRow("Папка:", shr);
@@ -357,6 +375,9 @@ void PhotoFrame::showSettings() {
     f.addRow(useSch);
     f.addRow("Время пробуждения:", wake);
     f.addRow("Время сна:", sleep);
+    f.addRow(new QLabel("<b>RTSP Камера</b>"));
+    f.addRow(rtspEnable);
+    f.addRow("URL камеры:", rtspUrlEdit);
 
     QPushButton *save = new QPushButton("Сохранить");
     QPushButton *exit = new QPushButton("Выход");
@@ -375,19 +396,66 @@ void PhotoFrame::showSettings() {
         m_config.useSchedule = useSch->isChecked();
         m_config.wakeTime = wake->time();
         m_config.sleepTime = sleep->time();
+        
+        m_config.useRtsp = rtspEnable->isChecked();
+        m_config.rtspUrl = rtspUrlEdit->text();
 
         m_config.save();
 
         PlaylistManager::clear();
         d.accept();
-        connectAndScan();
+        
+        // Переключаемся между режимами RTSP и слайд-шоу
+        if (m_config.useRtsp && !m_config.rtspUrl.isEmpty()) {
+            startRtspStream();
+        } else {
+            stopRtspStream();
+            connectAndScan();
+        }
     });
     d.exec();
 
     // Если после закрытия настроек время работы, то стартуем
     checkSchedule();
-    if (!m_isSleeping && !m_playlist.isEmpty())
+    if (!m_isSleeping && !m_playlist.isEmpty() && !m_config.useRtsp)
         m_timer->start();
+}
+
+void PhotoFrame::toggleRtspView() {
+    if (!m_config.useRtsp || m_config.rtspUrl.isEmpty())
+        return;
+    
+    m_showingRtsp = !m_showingRtsp;
+    
+    if (m_showingRtsp) {
+        startRtspStream();
+    } else {
+        stopRtspStream();
+        if (!m_playlist.isEmpty()) {
+            m_timer->start(m_config.interval);
+            nextSlide();
+        }
+    }
+}
+
+void PhotoFrame::startRtspStream() {
+    if (!m_config.useRtsp || m_config.rtspUrl.isEmpty())
+        return;
+    
+    m_timer->stop();
+    m_showingRtsp = true;
+    m_rtspViewer->setUrl(m_config.rtspUrl);
+    m_rtspViewer->show();
+    m_rtspViewer->raise();
+    m_rtspViewer->play();
+    
+    raiseOverlays();
+}
+
+void PhotoFrame::stopRtspStream() {
+    m_showingRtsp = false;
+    m_rtspViewer->stop();
+    m_rtspViewer->hide();
 }
 
 

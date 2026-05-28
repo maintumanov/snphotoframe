@@ -1,4 +1,4 @@
-QT       += core gui widgets network concurrent
+QT       += core gui widgets network concurrent multimedia multimediawidgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG   += c++14
@@ -20,10 +20,12 @@ SOURCES += \
     config.cpp \
     playlistmanager.cpp \
     imagedisplay.cpp \
-    photoframe.cpp
+    photoframe.cpp \
+    rtspviewer.cpp
 
 HEADERS += \
     config.h \
     playlistmanager.h \
     imagedisplay.h \
-    photoframe.h
+    photoframe.h \
+    rtspviewer.h

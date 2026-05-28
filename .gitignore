@@ -1,20 +1,26 @@
 ```
-# Qt/MOC build artifacts
+# Qt/MOC generated files
 *.moc
 *.moc.cpp
 *.ui.h
 *.qrc.cpp
-Makefile*
-*.pro.user
-*.pro.user.*
-moc_*.cpp
-qrc_*.cpp
 
-# Build directories
+# Build artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+*.dylib
+
+# Qt build directories
 build/
-release/
 debug/
-*_build/
+release/
+moc/
+obj/
 
 # Dependencies
 node_modules/
@@ -22,9 +28,8 @@ venv/
 .venv/
 __pycache__/
 *.egg-info/
-.Python
 
-# IDE files
+# Editor/IDE files
 .vscode/
 .idea/
 *.swp
@@ -34,17 +39,12 @@ __pycache__/
 # Logs
 *.log
 
+# System files
+.DS_Store
+Thumbs.db
+
 # Environment
 .env
 .env.local
 *.env.*
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# OS files
-.DS_Store
-Thumbs.db
 ```
