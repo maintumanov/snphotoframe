@@ -14,6 +14,10 @@ struct SmbConfig {
     bool useSchedule = false;
     QTime wakeTime = QTime(7, 0);   // Время включения по умолчанию
     QTime sleepTime = QTime(23, 0); // Время выключения по умолчанию
+    
+    // RTSP камера
+    bool useRtsp = false;
+    QString rtspUrl;
 
     void load(const QString& fileName = "photoframe.ini");
     void save(const QString& fileName = "photoframe.ini") const;

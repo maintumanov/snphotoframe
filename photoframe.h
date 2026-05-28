@@ -11,6 +11,7 @@
 #include "config.h"
 
 class ImageDisplay;
+class RtspViewer;
 
 class PhotoFrame : public QMainWindow {
     Q_OBJECT
@@ -24,6 +25,7 @@ private slots:
     void updateClock();
     void connectAndScan();
     void onScanFinished(const QStringList& list);
+    void toggleRtspView();
 
 protected:
     void mouseMoveEvent(QMouseEvent* e) override;
@@ -36,9 +38,12 @@ private:
     void raiseOverlays();
     void checkSchedule();
     void setSleepMode(bool sleep);
+    void startRtspStream();
+    void stopRtspStream();
 
     QStackedLayout* m_stack;
     ImageDisplay *m_viewA, *m_viewB;
+    RtspViewer* m_rtspViewer;
     QLabel *m_clock, *m_date, *m_photoDate;
     QPushButton* m_setBtn;
     QWidget* m_sleepScreen;
@@ -49,6 +54,7 @@ private:
     int m_idx = 0;
     QPoint m_startPos;
     bool m_isSleeping = false;
+    bool m_showingRtsp = false;
 };
 
 #endif // PHOTOFRAME_H
