@@ -390,4 +390,4 @@ void PhotoFrame::showSettings() {
         m_timer->start();
 }
 
-#include "photoframe.moc"
+

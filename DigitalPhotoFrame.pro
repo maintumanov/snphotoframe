@@ -6,7 +6,11 @@ TARGET    = DigitalPhotoFrame
 TEMPLATE  = app
 
 # Явно указываем текущую директорию для поиска заголовков
-INCLUDEPATH += .
+INCLUDEPATH += $$PWD
+DEPENDPATH += $$PWD
+
+# Директория для MOC-файлов
+MOC_DIR = .
 
 # Оптимизация для Raspberry Pi (если используется)
 linux: QMAKE_LFLAGS += -Wl,--no-as-needed
