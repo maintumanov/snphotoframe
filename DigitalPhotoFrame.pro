@@ -8,4 +8,19 @@ TEMPLATE  = app
 # Оптимизация для Raspberry Pi (если используется)
 linux: QMAKE_LFLAGS += -Wl,--no-as-needed
 
-SOURCES  += main.cpp
+# Пути к заголовочным файлам и исходникам
+INCLUDEPATH += $$PWD/include
+DEPENDPATH  += $$PWD/src
+
+SOURCES += \
+    main.cpp \
+    src/config.cpp \
+    src/playlistmanager.cpp \
+    src/imagedisplay.cpp \
+    src/photoframe.cpp
+
+HEADERS += \
+    include/config.h \
+    include/playlistmanager.h \
+    include/imagedisplay.h \
+    include/photoframe.h
