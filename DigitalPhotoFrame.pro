@@ -5,6 +5,9 @@ CONFIG   += c++14
 TARGET    = DigitalPhotoFrame
 TEMPLATE  = app
 
+# Явно указываем текущую директорию для поиска заголовков
+INCLUDEPATH += .
+
 # Оптимизация для Raspberry Pi (если используется)
 linux: QMAKE_LFLAGS += -Wl,--no-as-needed
 
