@@ -1,31 +1,27 @@
-QT       += core gui widgets network concurrent multimedia multimediawidgets
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT       += core gui qml quick network concurrent multimedia
 
 CONFIG   += c++14
 TARGET    = DigitalPhotoFrame
 TEMPLATE  = app
 
-# Явно указываем текущую директорию для поиска заголовков
 INCLUDEPATH += $$PWD
 DEPENDPATH += $$PWD
-
-# Директория для MOC-файлов
 MOC_DIR = .
 
-# Оптимизация для Raspberry Pi (если используется)
+RESOURCES += qml.qrc
+
 linux: QMAKE_LFLAGS += -Wl,--no-as-needed
 
 SOURCES += \
     main.cpp \
     config.cpp \
     playlistmanager.cpp \
-    imagedisplay.cpp \
-    photoframe.cpp \
-    rtspviewer.cpp
+    photoframe.cpp
 
 HEADERS += \
     config.h \
     playlistmanager.h \
-    imagedisplay.h \
-    photoframe.h \
-    rtspviewer.h
+    photoframe.h
+
+DISTFILES += \
+    main.qml
