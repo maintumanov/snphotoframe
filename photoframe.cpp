@@ -44,6 +44,7 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
 
     if (m_config.useRtsp && !m_config.rtspUrl.isEmpty()) {
         emit rtspStarted(m_config.rtspUrl);
+        QTimer::singleShot(1000, this, &PhotoFrameBackend::connectAndScan);
     } else {
         m_playlist = PlaylistManager::load();
         if (!m_playlist.isEmpty()) {
@@ -158,7 +159,8 @@ void PhotoFrameBackend::nextSlide() {
             return;
         }
         m_imageProvider->setCurrentImage(img);
-        m_currentImagePath = "image://current/img";
+        m_imageCounter++;
+        m_currentImagePath = QString("image://current/img?id=%1").arg(m_imageCounter);
         QMetaObject::invokeMethod(this, [this]() {
             emit imageChanged();
         });
@@ -219,6 +221,15 @@ void PhotoFrameBackend::connectAndScan() {
         if (m_destroyed) return;
         QMetaObject::invokeMethod(this, "onScanFinished", Q_ARG(QStringList, files));
     });
+}
+
+void PhotoFrameBackend::fallbackToPhotos() {
+    if (m_config.server.isEmpty()) {
+        setPageIndex(1);
+        return;
+    }
+    m_playlist = PlaylistManager::load();
+    connectAndScan();
 }
 
 void PhotoFrameBackend::onScanFinished(const QStringList& list) {

@@ -84,6 +84,7 @@ public:
     Q_INVOKABLE void toggleSlideshow();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE void connectAndScan();
+    Q_INVOKABLE void fallbackToPhotos();
     Q_INVOKABLE QStringList tasks() const;
 
 signals:
@@ -114,6 +115,7 @@ private:
     bool m_isSleeping = false;
     bool m_destroyed = false;
     QString m_currentImagePath;
+    int m_imageCounter = 0;
     ImageProvider* m_imageProvider = nullptr;
 };
 
