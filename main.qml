@@ -411,9 +411,6 @@ ApplicationWindow {
                 Text { text: backend.currentTime; color: "white"; font.pixelSize: 24; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
             Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 2
                 Text { text: backend.currentDate; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
-            Rectangle { width: 84; height: 56; radius: 14; color: backend.signalNetConnected ? "#4d004400" : "#4d000000"; border.color: backend.signalNetConnected ? "#5a5" : "white"; border.width: 2
-                visible: backend.useSignalNet
-                Text { text: backend.signalNetConnected ? (backend.signalNetTemperature.toFixed(1) + "\u00b0C") : "--"; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
             Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
                 Text { text: "\u25b6"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
                 MouseArea { id: vma; anchors.fill: parent; onClicked: {
@@ -463,27 +460,66 @@ ApplicationWindow {
 
     Rectangle { id: sleepOverlay; anchors.fill: parent; color: "black"; visible: false; z: 50 }
 
+    // Temperature — top right corner
+    Text {
+        visible: backend.useSignalNet && backend.signalNetConnected && backend.signalNetTemperatureValid
+        anchors.top: parent.top; anchors.right: parent.right
+        anchors.topMargin: 20; anchors.rightMargin: 24
+        z: 20
+        text: backend.signalNetTemperature.toFixed(1) + "\u00b0C"
+        color: "white"
+        font.pixelSize: 48
+        font.bold: true
+        font.family: "Consolas, monospace"
+        style: Text.Outline
+        styleColor: "#44000000"
+    }
+
     // SignalNet Alert Overlay
     Rectangle {
         id: snAlertOverlay
         anchors.fill: parent
-        color: "#cc000000"
         visible: backend.signalNetAlert.length > 0
         z: 55
         property int alertSeverity: backend.signalNetAlertSeverity
+        property color bgColor: alertSeverity >= 2 ? "#ee000000" : (alertSeverity === 1 ? "#ee330000" : "#ee000033")
+        color: bgColor
+
+        // Flashing border
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: snAlertOverlay.alertSeverity >= 2 ? "#f00" : (snAlertOverlay.alertSeverity === 1 ? "#fa0" : "#5af")
+            border.width: 4
+            SequentialAnimation on border.width {
+                running: snAlertOverlay.visible
+                loops: Animation.Infinite
+                NumberAnimation { from: 2; to: 8; duration: 400; easing.type: Easing.InOutQuad }
+                NumberAnimation { from: 8; to: 2; duration: 400; easing.type: Easing.InOutQuad }
+            }
+        }
+
         Column {
             anchors.centerIn: parent
             spacing: 20
+            // Pulsing icon
             Text {
+                id: alertIcon
                 text: snAlertOverlay.alertSeverity >= 2 ? "\u26a0" : (snAlertOverlay.alertSeverity === 1 ? "\u26a0" : "\u2139")
                 color: snAlertOverlay.alertSeverity >= 2 ? "#f00" : (snAlertOverlay.alertSeverity === 1 ? "#fa0" : "#5af")
                 font.pixelSize: 80
                 anchors.horizontalCenter: parent.horizontalCenter
+                SequentialAnimation on opacity {
+                    running: snAlertOverlay.visible
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 1.0; to: 0.3; duration: 500; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 0.3; to: 1.0; duration: 500; easing.type: Easing.InOutQuad }
+                }
             }
             Text {
                 text: backend.signalNetAlert
                 color: "white"
-                font.pixelSize: 28
+                font.pixelSize: 32
                 font.bold: true
                 anchors.horizontalCenter: parent.horizontalCenter
             }

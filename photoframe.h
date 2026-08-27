@@ -11,6 +11,7 @@
 #include <QUrl>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QSoundEffect>
 #include "config.h"
 class SignalNet;
 
@@ -61,6 +62,7 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(qreal signalNetTemperature READ signalNetTemperature NOTIFY signalNetTemperatureChanged)
     Q_PROPERTY(QString signalNetAlert READ signalNetAlert NOTIFY signalNetAlertChanged)
     Q_PROPERTY(int signalNetAlertSeverity READ signalNetAlertSeverity NOTIFY signalNetAlertSeverityChanged)
+    Q_PROPERTY(bool signalNetTemperatureValid READ signalNetTemperatureValid NOTIFY signalNetTemperatureValidChanged)
     Q_PROPERTY(bool signalNetUseUdp READ signalNetUseUdp WRITE setSignalNetUseUdp NOTIFY configChanged)
     Q_PROPERTY(int signalNetUdpLocalPort READ signalNetUdpLocalPort WRITE setSignalNetUdpLocalPort NOTIFY configChanged)
     Q_PROPERTY(QString signalNetUdpKey READ signalNetUdpKey WRITE setSignalNetUdpKey NOTIFY configChanged)
@@ -140,6 +142,7 @@ public:
     qreal signalNetTemperature() const;
     QString signalNetAlert() const;
     int signalNetAlertSeverity() const;
+    bool signalNetTemperatureValid() const;
 
     Q_INVOKABLE void connectSignalNet();
     Q_INVOKABLE void disconnectSignalNet();
@@ -173,6 +176,7 @@ signals:
     void signalNetTemperatureChanged();
     void signalNetAlertChanged();
     void signalNetAlertSeverityChanged();
+    void signalNetTemperatureValidChanged();
 
 private slots:
     void onTick();
@@ -207,6 +211,7 @@ private:
     QString m_rtspErrorMsg;
     ImageProvider* m_imageProvider = nullptr;
     SignalNet* m_signalNet = nullptr;
+    QSoundEffect* m_alertSound = nullptr;
 
 };
 

@@ -65,6 +65,7 @@ class SignalNet : public QObject
     Q_PROPERTY(int alertSeverity READ alertSeverity NOTIFY alertSeverityChanged)
     Q_PROPERTY(bool absenceMode READ absenceMode NOTIFY absenceModeChanged)
     Q_PROPERTY(bool useUdp READ useUdp NOTIFY useUdpChanged)
+    Q_PROPERTY(bool temperatureValid READ isTemperatureValid NOTIFY temperatureValidChanged)
 
 public:
     explicit SignalNet(QObject *parent = nullptr);
@@ -77,6 +78,7 @@ public:
     int alertSeverity() const;
     bool absenceMode() const;
     bool useUdp() const;
+    bool isTemperatureValid() const;
 
     Q_INVOKABLE void connectToServer(const QString &address, quint16 port,
                                      const QString &login, const QString &password);
@@ -93,6 +95,7 @@ signals:
     void lastAlertChanged();
     void absenceModeChanged();
     void useUdpChanged();
+    void temperatureValidChanged();
 
     // Media control signals for photo frame
     void mediaNext();
@@ -105,7 +108,7 @@ signals:
     void navLeft();
 
     // System signals
-    void bellPressed();
+    void bellPressed(const QString &message);
     void alertReceived(const QString &type, int severity);
     void poweroffRequested();
 
@@ -141,6 +144,7 @@ private:
     QString m_lastAlert;
     int m_alertSeverity;
     bool m_absenceMode;
+    QDateTime m_lastTemperatureTime;
 
     void setupTransport();
 };

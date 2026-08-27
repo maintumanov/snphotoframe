@@ -59,6 +59,16 @@ SignalNet::SignalNet(QObject *parent)
 
     // Default UDP source port
     m_udpClient->setSourcePort(29545);
+
+    // Check temperature staleness every minute
+    QTimer *staleTimer = new QTimer(this);
+    connect(staleTimer, &QTimer::timeout, this, [this]() {
+        if (m_lastTemperatureTime.isValid() && !isTemperatureValid()) {
+            m_lastTemperatureTime = QDateTime(); // invalidate
+            emit temperatureValidChanged();
+        }
+    });
+    staleTimer->start(60000);
 }
 
 SignalNet::~SignalNet()
@@ -73,6 +83,10 @@ QString SignalNet::lastAlert() const { return m_lastAlert; }
 int SignalNet::alertSeverity() const { return m_alertSeverity; }
 bool SignalNet::absenceMode() const { return m_absenceMode; }
 bool SignalNet::useUdp() const { return m_useUdp; }
+bool SignalNet::isTemperatureValid() const {
+    return m_lastTemperatureTime.isValid() &&
+           m_lastTemperatureTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
 
 void SignalNet::setupTransport()
 {
@@ -230,11 +244,14 @@ void SignalNet::onEventNumInput(int numInput, QByteArray data)
     switch (numInput) {
     case input_temperature: {
         qreal temp = QSNRAWtoTemperature(&data, 1);
+        bool wasValid = isTemperatureValid();
+        m_lastTemperatureTime = QDateTime::currentDateTime();
         if (m_temperature != temp) {
             m_temperature = temp;
             emit temperatureChanged();
             qInfo() << "SignalNet: temperature =" << temp << "\u00b0C";
         }
+        if (!wasValid) emit temperatureValidChanged();
         break;
     }
     case input_alert: {
@@ -267,8 +284,13 @@ void SignalNet::onEventNumInput(int numInput, QByteArray data)
         break;
     }
     case input_bell: {
-        qInfo() << "SignalNet: bell pressed";
-        emit bellPressed();
+        m_lastAlert = QString::fromUtf8("\u0417\u0432\u043e\u043d\u043e\u043a");
+        m_alertSeverity = 0;
+        qInfo() << "SignalNet:" << m_lastAlert;
+        emit lastAlertChanged();
+        emit alertSeverityChanged(0);
+        emit alertReceived(m_lastAlert, 0);
+        emit bellPressed(m_lastAlert);
         break;
     }
     case input_playstop: {

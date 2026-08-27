@@ -1,3 +1,6 @@
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
 #include "photoframe.h"
 #include "signalnet.h"
 #include "playlistmanager.h"
@@ -9,6 +12,11 @@
 #include <QProcess>
 #include <QCoreApplication>
 #include <QQmlEngine>
+#include <QSoundEffect>
+#include <QUrl>
+#include <QDir>
+#include <QFile>
+#include <cmath>
 #include <algorithm>
 #include <random>
 
@@ -47,15 +55,60 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
     connect(m_signalNet, &SignalNet::temperatureChanged, this, &PhotoFrameBackend::signalNetTemperatureChanged);
     connect(m_signalNet, &SignalNet::lastAlertChanged, this, &PhotoFrameBackend::signalNetAlertChanged);
     connect(m_signalNet, &SignalNet::alertSeverityChanged, this, &PhotoFrameBackend::signalNetAlertSeverityChanged);
+    connect(m_signalNet, &SignalNet::temperatureValidChanged, this, &PhotoFrameBackend::signalNetTemperatureValidChanged);
     connect(m_signalNet, &SignalNet::mediaNext, this, &PhotoFrameBackend::nextSlide);
     connect(m_signalNet, &SignalNet::mediaPrevious, this, &PhotoFrameBackend::prevSlide);
     connect(m_signalNet, &SignalNet::mediaPlayPause, this, &PhotoFrameBackend::toggleSlideshow);
-    connect(m_signalNet, &SignalNet::bellPressed, this, [this]() {
-        emit signalNetAlertChanged();
-    });
+    // bellPressed handled inside SignalNet — sets lastAlert directly
     if (m_config.useSignalNet && !m_config.signalNetServer.isEmpty()) {
         QTimer::singleShot(2000, this, &PhotoFrameBackend::connectSignalNet);
     }
+
+    // Alert sound — generate sine wave WAV in temp file
+    m_alertSound = new QSoundEffect(this);
+    m_alertSound->setLoopCount(3);
+    m_alertSound->setVolume(0.8f);
+    {
+        const int sampleRate = 44100;
+        const int durationMs = 200;
+        const int freq = 880;
+        const int samples = sampleRate * durationMs / 1000;
+        QByteArray wav;
+        // WAV header
+        wav.append("RIFF", 4);
+        int dataSize = samples * 2;
+        int fileSize = 36 + dataSize;
+        wav.append(reinterpret_cast<const char*>(&fileSize), 4);
+        wav.append("WAVE", 4);
+        wav.append("fmt ", 4);
+        int fmtSize = 16;
+        wav.append(reinterpret_cast<const char*>(&fmtSize), 4);
+        short fmt = 1; wav.append(reinterpret_cast<const char*>(&fmt), 2);
+        short ch = 1; wav.append(reinterpret_cast<const char*>(&ch), 2);
+        int sr = sampleRate; wav.append(reinterpret_cast<const char*>(&sr), 4);
+        int byteRate = sampleRate * 2; wav.append(reinterpret_cast<const char*>(&byteRate), 4);
+        short blockAlign = 2; wav.append(reinterpret_cast<const char*>(&blockAlign), 2);
+        short bits = 16; wav.append(reinterpret_cast<const char*>(&bits), 2);
+        wav.append("data", 4);
+        wav.append(reinterpret_cast<const char*>(&dataSize), 4);
+        // Sine wave samples
+        for (int i = 0; i < samples; i++) {
+            double t = (double)i / sampleRate;
+            short sample = (short)(16000.0 * sin(2.0 * M_PI * freq * t));
+            wav.append(reinterpret_cast<const char*>(&sample), 2);
+        }
+        QString tmpPath = QDir::tempPath() + "/photoframe_alert.wav";
+        QFile tmpFile(tmpPath);
+        if (tmpFile.open(QIODevice::WriteOnly)) {
+            tmpFile.write(wav);
+            tmpFile.close();
+            m_alertSound->setSource(QUrl::fromLocalFile(tmpPath));
+        }
+    }
+    connect(m_signalNet, &SignalNet::alertReceived, this, [this](const QString &, int) {
+        if (m_alertSound && m_alertSound->status() != QSoundEffect::Error)
+            m_alertSound->play();
+    });
 
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, &QTimer::timeout, this, &PhotoFrameBackend::onTick);
@@ -160,7 +213,10 @@ QString PhotoFrameBackend::signalNetPass() const { return m_config.signalNetPass
 bool PhotoFrameBackend::signalNetConnected() const { return m_signalNet && m_signalNet->isConnected(); }
 qreal PhotoFrameBackend::signalNetTemperature() const { return m_signalNet ? m_signalNet->temperature() : 0; }
 QString PhotoFrameBackend::signalNetAlert() const { return m_signalNet ? m_signalNet->lastAlert() : QString(); }
-int PhotoFrameBackend::signalNetAlertSeverity() const { return m_signalNet ? m_signalNet->alertSeverity() : 0; }    // SignalNet setters
+int PhotoFrameBackend::signalNetAlertSeverity() const { return m_signalNet ? m_signalNet->alertSeverity() : 0; }
+bool PhotoFrameBackend::signalNetTemperatureValid() const { return m_signalNet && m_signalNet->isTemperatureValid(); }
+
+// SignalNet setters
 void PhotoFrameBackend::setUseSignalNet(bool v) { if (m_config.useSignalNet != v) { m_config.useSignalNet = v; emit configChanged(); } }
 void PhotoFrameBackend::setSignalNetServer(const QString& v) { if (m_config.signalNetServer != v) { m_config.signalNetServer = v; emit configChanged(); } }
 void PhotoFrameBackend::setSignalNetPort(int v) { if (m_config.signalNetPort != static_cast<quint16>(v)) { m_config.signalNetPort = static_cast<quint16>(v); emit configChanged(); } }
@@ -190,8 +246,7 @@ void PhotoFrameBackend::disconnectSignalNet() {
 }
 
 void PhotoFrameBackend::clearSignalNetAlert() {
-    // Reset the alert by emitting the signal
-    emit signalNetAlertChanged();
+    if (m_signalNet) m_signalNet->clearAlert();
 }
 
 void PhotoFrameBackend::onTick() {
