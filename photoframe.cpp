@@ -1,4 +1,5 @@
 #include "photoframe.h"
+#include "signalnet.h"
 #include "playlistmanager.h"
 
 #include <QDateTime>
@@ -40,6 +41,22 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
              << "useRtsp=" << m_config.useRtsp << "rtspUrl=" << m_config.rtspUrl
              << "useGuest=" << m_config.useGuest;
 
+    // SignalNet
+    m_signalNet = new SignalNet(this);
+    connect(m_signalNet, &SignalNet::connectedChanged, this, &PhotoFrameBackend::signalNetConnectedChanged);
+    connect(m_signalNet, &SignalNet::temperatureChanged, this, &PhotoFrameBackend::signalNetTemperatureChanged);
+    connect(m_signalNet, &SignalNet::lastAlertChanged, this, &PhotoFrameBackend::signalNetAlertChanged);
+    connect(m_signalNet, &SignalNet::alertSeverityChanged, this, &PhotoFrameBackend::signalNetAlertSeverityChanged);
+    connect(m_signalNet, &SignalNet::mediaNext, this, &PhotoFrameBackend::nextSlide);
+    connect(m_signalNet, &SignalNet::mediaPrevious, this, &PhotoFrameBackend::prevSlide);
+    connect(m_signalNet, &SignalNet::mediaPlayPause, this, &PhotoFrameBackend::toggleSlideshow);
+    connect(m_signalNet, &SignalNet::bellPressed, this, [this]() {
+        emit signalNetAlertChanged();
+    });
+    if (m_config.useSignalNet && !m_config.signalNetServer.isEmpty()) {
+        QTimer::singleShot(2000, this, &PhotoFrameBackend::connectSignalNet);
+    }
+
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, &QTimer::timeout, this, &PhotoFrameBackend::onTick);
     m_tickTimer->start(1000);
@@ -68,9 +85,6 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
                 nextSlide();
             }
         }
-        // Always mount SMB / scan — needed so cached paths are accessible
-        // even if playlist was loaded from cache (SMB may not be mounted yet).
-        // When scan finishes it will replace the playlist and start the slideshow.
         QTimer::singleShot(1000, this, &PhotoFrameBackend::connectAndScan);
     });
 }
@@ -136,6 +150,49 @@ void PhotoFrameBackend::setUseGuest(bool v) { if (m_config.useGuest != v) { m_co
 void PhotoFrameBackend::setSmbVers(const QString& v) { if (m_config.smbVers != v) { m_config.smbVers = v; emit configChanged(); } }
 void PhotoFrameBackend::setUseRtsp(bool v) { if (m_config.useRtsp != v) { m_config.useRtsp = v; emit configChanged(); } }
 void PhotoFrameBackend::setRtspUrl(const QString& v) { if (m_config.rtspUrl != v) { m_config.rtspUrl = v; emit configChanged(); } }
+
+// SignalNet getters
+bool PhotoFrameBackend::useSignalNet() const { return m_config.useSignalNet; }
+QString PhotoFrameBackend::signalNetServer() const { return m_config.signalNetServer; }
+int PhotoFrameBackend::signalNetPort() const { return m_config.signalNetPort; }
+QString PhotoFrameBackend::signalNetLogin() const { return m_config.signalNetLogin; }
+QString PhotoFrameBackend::signalNetPass() const { return m_config.signalNetPass; }
+bool PhotoFrameBackend::signalNetConnected() const { return m_signalNet && m_signalNet->isConnected(); }
+qreal PhotoFrameBackend::signalNetTemperature() const { return m_signalNet ? m_signalNet->temperature() : 0; }
+QString PhotoFrameBackend::signalNetAlert() const { return m_signalNet ? m_signalNet->lastAlert() : QString(); }
+int PhotoFrameBackend::signalNetAlertSeverity() const { return m_signalNet ? m_signalNet->alertSeverity() : 0; }    // SignalNet setters
+void PhotoFrameBackend::setUseSignalNet(bool v) { if (m_config.useSignalNet != v) { m_config.useSignalNet = v; emit configChanged(); } }
+void PhotoFrameBackend::setSignalNetServer(const QString& v) { if (m_config.signalNetServer != v) { m_config.signalNetServer = v; emit configChanged(); } }
+void PhotoFrameBackend::setSignalNetPort(int v) { if (m_config.signalNetPort != static_cast<quint16>(v)) { m_config.signalNetPort = static_cast<quint16>(v); emit configChanged(); } }
+void PhotoFrameBackend::setSignalNetLogin(const QString& v) { if (m_config.signalNetLogin != v) { m_config.signalNetLogin = v; emit configChanged(); } }
+void PhotoFrameBackend::setSignalNetPass(const QString& v) { if (m_config.signalNetPass != v) { m_config.signalNetPass = v; emit configChanged(); } }
+
+bool PhotoFrameBackend::signalNetUseUdp() const { return m_config.useUdp; }
+void PhotoFrameBackend::setSignalNetUseUdp(bool v) { if (m_config.useUdp != v) { m_config.useUdp = v; emit configChanged(); } }
+int PhotoFrameBackend::signalNetUdpLocalPort() const { return m_config.signalNetUdpLocalPort; }
+void PhotoFrameBackend::setSignalNetUdpLocalPort(int v) { if (m_config.signalNetUdpLocalPort != static_cast<quint16>(v)) { m_config.signalNetUdpLocalPort = static_cast<quint16>(v); emit configChanged(); } }
+QString PhotoFrameBackend::signalNetUdpKey() const { return m_config.signalNetUdpKey; }
+void PhotoFrameBackend::setSignalNetUdpKey(const QString& v) { if (m_config.signalNetUdpKey != v) { m_config.signalNetUdpKey = v; emit configChanged(); } }
+
+void PhotoFrameBackend::connectSignalNet() {
+    if (!m_signalNet) return;
+    if (m_config.useUdp) {
+        m_signalNet->connectToServerUDP(m_config.signalNetServer, m_config.signalNetPort,
+                                        m_config.signalNetUdpLocalPort, m_config.signalNetUdpKey);
+    } else {
+        m_signalNet->connectToServer(m_config.signalNetServer, m_config.signalNetPort,
+                                     m_config.signalNetLogin, m_config.signalNetPass);
+    }
+}
+
+void PhotoFrameBackend::disconnectSignalNet() {
+    if (m_signalNet) m_signalNet->disconnectFromServer();
+}
+
+void PhotoFrameBackend::clearSignalNetAlert() {
+    // Reset the alert by emitting the signal
+    emit signalNetAlertChanged();
+}
 
 void PhotoFrameBackend::onTick() {
     emit tick();

@@ -262,6 +262,70 @@ ApplicationWindow {
                     TextField { id: rtspField; text: backend.rtspUrl; onTextChanged: backend.rtspUrl = text; placeholderText: "rtsp://user:pass@ip:port/stream"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: rtspField.activeFocus ? "#aaa" : "#555" } }
                 }
 
+                Text { text: "SignalNet"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
+
+                Row { spacing: 12; width: parent.width
+                    CheckBox {
+                        id: snChk
+                        text: "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c SignalNet"
+                        checked: backend.useSignalNet
+                        onCheckedChanged: backend.useSignalNet = checked
+                        contentItem: Text { text: snChk.text; color: "white"; font.pixelSize: 20; leftPadding: snChk.indicator.width + 8; verticalAlignment: Text.AlignVCenter }
+                        indicator: Rectangle { width: 24; height: 24; radius: 6; color: snChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8
+                    Text { text: "\u0421\u0435\u0440\u0432\u0435\u0440:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snSrvField; text: backend.signalNetServer; onTextChanged: backend.signalNetServer = text; placeholderText: "192.168.1.1"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snSrvField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8
+                    Text { text: "\u041f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snPortField; text: backend.signalNetPort; onTextChanged: backend.signalNetPort = parseInt(text) || 8888; placeholderText: "8888"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snPortField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8
+                    Text { text: "\u0422\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    ComboBox {
+                        id: snTransportCombo
+                        model: ["TCP", "UDP"]
+                        currentIndex: backend.signalNetUseUdp ? 1 : 0
+                        onActivated: backend.signalNetUseUdp = (index === 1)
+                        width: 200
+                        background: Rectangle { radius: 8; color: "#222"; border.color: "#555" }
+                        contentItem: Text { text: snTransportCombo.displayText; color: "white"; font.pixelSize: 20; verticalAlignment: Text.AlignVCenter; leftPadding: 12 }
+                        delegate: ItemDelegate {
+                            width: snTransportCombo.width
+                            contentItem: Text { text: modelData; color: "white"; font.pixelSize: 20; verticalAlignment: Text.AlignVCenter; leftPadding: 12 }
+                            background: Rectangle { color: index === snTransportCombo.currentIndex ? "#444" : "#222" }
+                        }
+                    }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8; visible: !backend.signalNetUseUdp
+                    Text { text: "\u041b\u043e\u0433\u0438\u043d:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snLoginField; text: backend.signalNetLogin; onTextChanged: backend.signalNetLogin = text; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snLoginField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8; visible: !backend.signalNetUseUdp
+                    Text { text: "\u041f\u0430\u0440\u043e\u043b\u044c:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snPassField; text: backend.signalNetPass; onTextChanged: backend.signalNetPass = text; echoMode: TextInput.Password; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snPassField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8; visible: backend.signalNetUseUdp
+                    Text { text: "\u041b\u043e\u043a. \u043f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snUdpLocalPortField; text: backend.signalNetUdpLocalPort; onTextChanged: backend.signalNetUdpLocalPort = parseInt(text) || 29545; placeholderText: "29545"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snUdpLocalPortField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8; visible: backend.signalNetUseUdp
+                    Text { text: "\u041a\u043b\u044e\u0447:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: snUdpKeyField; text: backend.signalNetUdpKey; onTextChanged: backend.signalNetUdpKey = text; placeholderText: "signalnet"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snUdpKeyField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 12; width: parent.width; topPadding: 8
+                    Rectangle { width: 120; height: 40; radius: 8; color: snConnectMa.pressed ? "#555" : (backend.signalNetConnected ? "#5a5" : "#222"); border.color: "#888"; border.width: 1
+                        Text { text: backend.signalNetConnected ? "\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c" : "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c"; color: "white"; font.pixelSize: 16; anchors.centerIn: parent }
+                        MouseArea { id: snConnectMa; anchors.fill: parent; onClicked: {
+                            if (backend.signalNetConnected) backend.disconnectSignalNet()
+                            else backend.connectSignalNet()
+                        } }
+                    }
+                    Text { text: backend.signalNetConnected ? "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e" : "\u041e\u0442\u043a\u043b\u044e\u0447\u0435\u043d\u043e"; color: backend.signalNetConnected ? "#5a5" : "#f55"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
+                }
+
                 Item { width: 1; height: 30 }
 
                 Row { spacing: 20; anchors.horizontalCenter: parent.horizontalCenter; bottomPadding: 30
@@ -347,6 +411,9 @@ ApplicationWindow {
                 Text { text: backend.currentTime; color: "white"; font.pixelSize: 24; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
             Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 2
                 Text { text: backend.currentDate; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
+            Rectangle { width: 84; height: 56; radius: 14; color: backend.signalNetConnected ? "#4d004400" : "#4d000000"; border.color: backend.signalNetConnected ? "#5a5" : "white"; border.width: 2
+                visible: backend.useSignalNet
+                Text { text: backend.signalNetConnected ? (backend.signalNetTemperature.toFixed(1) + "\u00b0C") : "--"; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
             Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
                 Text { text: "\u25b6"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
                 MouseArea { id: vma; anchors.fill: parent; onClicked: {
@@ -395,6 +462,48 @@ ApplicationWindow {
     }
 
     Rectangle { id: sleepOverlay; anchors.fill: parent; color: "black"; visible: false; z: 50 }
+
+    // SignalNet Alert Overlay
+    Rectangle {
+        id: snAlertOverlay
+        anchors.fill: parent
+        color: "#cc000000"
+        visible: backend.signalNetAlert.length > 0
+        z: 55
+        property int alertSeverity: backend.signalNetAlertSeverity
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+            Text {
+                text: snAlertOverlay.alertSeverity >= 2 ? "\u26a0" : (snAlertOverlay.alertSeverity === 1 ? "\u26a0" : "\u2139")
+                color: snAlertOverlay.alertSeverity >= 2 ? "#f00" : (snAlertOverlay.alertSeverity === 1 ? "#fa0" : "#5af")
+                font.pixelSize: 80
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            Text {
+                text: backend.signalNetAlert
+                color: "white"
+                font.pixelSize: 28
+                font.bold: true
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            Text {
+                text: "SignalNet"
+                color: "#aaa"
+                font.pixelSize: 16
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: backend.clearSignalNetAlert()
+        }
+        Timer {
+            interval: 10000
+            running: snAlertOverlay.visible
+            onTriggered: backend.clearSignalNetAlert()
+        }
+    }
 
     MouseArea { anchors.fill: parent; z: 1; visible: backend.pageIndex === 0 && (backend.rtspState || 0) !== 2; onClicked: backend.nextSlide(); propagateComposedEvents: true }
 

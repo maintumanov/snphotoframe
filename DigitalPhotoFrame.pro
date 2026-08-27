@@ -16,12 +16,22 @@ SOURCES += \
     main.cpp \
     config.cpp \
     playlistmanager.cpp \
-    photoframe.cpp
+    photoframe.cpp \
+    signalnet.cpp \
+    qsnshapes.cpp \
+    qsntcpclient.cpp \
+    qsnudpclient.cpp \
+    qsninterface.cpp
 
 HEADERS += \
     config.h \
     playlistmanager.h \
-    photoframe.h
+    photoframe.h \
+    signalnet.h \
+    qsnshapes.h \
+    qsntcpclient.h \
+    qsnudpclient.h \
+    qsninterface.h
 
 DISTFILES += \
     main.qml

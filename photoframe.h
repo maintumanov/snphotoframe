@@ -11,8 +11,8 @@
 #include <QUrl>
 #include <QMutex>
 #include <QMutexLocker>
-
 #include "config.h"
+class SignalNet;
 
 class ImageProvider : public QQuickImageProvider {
 public:
@@ -50,6 +50,20 @@ class PhotoFrameBackend : public QObject {
 
     Q_PROPERTY(int rtspState READ rtspState NOTIFY rtspStateChanged)
     Q_PROPERTY(QString rtspErrorMsg READ rtspErrorMsg NOTIFY rtspErrorMsgChanged)
+
+    // SignalNet
+    Q_PROPERTY(bool useSignalNet READ useSignalNet WRITE setUseSignalNet NOTIFY configChanged)
+    Q_PROPERTY(QString signalNetServer READ signalNetServer WRITE setSignalNetServer NOTIFY configChanged)
+    Q_PROPERTY(int signalNetPort READ signalNetPort WRITE setSignalNetPort NOTIFY configChanged)
+    Q_PROPERTY(QString signalNetLogin READ signalNetLogin WRITE setSignalNetLogin NOTIFY configChanged)
+    Q_PROPERTY(QString signalNetPass READ signalNetPass WRITE setSignalNetPass NOTIFY configChanged)
+    Q_PROPERTY(bool signalNetConnected READ signalNetConnected NOTIFY signalNetConnectedChanged)
+    Q_PROPERTY(qreal signalNetTemperature READ signalNetTemperature NOTIFY signalNetTemperatureChanged)
+    Q_PROPERTY(QString signalNetAlert READ signalNetAlert NOTIFY signalNetAlertChanged)
+    Q_PROPERTY(int signalNetAlertSeverity READ signalNetAlertSeverity NOTIFY signalNetAlertSeverityChanged)
+    Q_PROPERTY(bool signalNetUseUdp READ signalNetUseUdp WRITE setSignalNetUseUdp NOTIFY configChanged)
+    Q_PROPERTY(int signalNetUdpLocalPort READ signalNetUdpLocalPort WRITE setSignalNetUdpLocalPort NOTIFY configChanged)
+    Q_PROPERTY(QString signalNetUdpKey READ signalNetUdpKey WRITE setSignalNetUdpKey NOTIFY configChanged)
 
 public:
     explicit PhotoFrameBackend(QObject* parent = nullptr);
@@ -105,6 +119,32 @@ public:
     Q_INVOKABLE void onRtspError(const QString& msg);
     Q_INVOKABLE void stopRtsp();
 
+    // SignalNet
+    bool useSignalNet() const;
+    void setUseSignalNet(bool v);
+    QString signalNetServer() const;
+    void setSignalNetServer(const QString& v);
+    int signalNetPort() const;
+    void setSignalNetPort(int v);
+    QString signalNetLogin() const;
+    void setSignalNetLogin(const QString& v);
+    QString signalNetPass() const;
+    void setSignalNetPass(const QString& v);
+    bool signalNetUseUdp() const;
+    void setSignalNetUseUdp(bool v);
+    int signalNetUdpLocalPort() const;
+    void setSignalNetUdpLocalPort(int v);
+    QString signalNetUdpKey() const;
+    void setSignalNetUdpKey(const QString& v);
+    bool signalNetConnected() const;
+    qreal signalNetTemperature() const;
+    QString signalNetAlert() const;
+    int signalNetAlertSeverity() const;
+
+    Q_INVOKABLE void connectSignalNet();
+    Q_INVOKABLE void disconnectSignalNet();
+    Q_INVOKABLE void clearSignalNetAlert();
+
 enum RtspState { RtspIdle = 0, RtspConnecting, RtspPlaying, RtspError };
     Q_ENUM(RtspState)
 
@@ -127,6 +167,12 @@ signals:
     void rtspHideOverlay();
     void rtspStateChanged();
     void rtspErrorMsgChanged();
+
+    // SignalNet signals
+    void signalNetConnectedChanged();
+    void signalNetTemperatureChanged();
+    void signalNetAlertChanged();
+    void signalNetAlertSeverityChanged();
 
 private slots:
     void onTick();
@@ -160,6 +206,8 @@ private:
     static const int kMaxRtspRetries = 3;
     QString m_rtspErrorMsg;
     ImageProvider* m_imageProvider = nullptr;
+    SignalNet* m_signalNet = nullptr;
+
 };
 
 #endif // PHOTOFRAME_H

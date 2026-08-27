@@ -30,7 +30,8 @@ All source files are in the repo root (flat layout):
 | `photoframe.cpp/h` | QML backend (QObject) — slideshow engine, settings, schedule, RTSP toggle |
 | `playlistmanager.cpp/h` | Reads/writes `playlist.txt` (one path per line) |
 | `config.cpp/h` | `SmbConfig` struct, reads/writes `photoframe.ini` via `QSettings` |
-| `main.qml` | QML UI — crossfade images, settings overlay, tasks, calendar, RTSP, control bar |
+| `signalnet.cpp/h` | Simplified SignalNet TCP client — temperature, alerts, media control |
+| `main.qml` | QML UI — crossfade images, settings overlay, tasks, calendar, RTSP, SignalNet, control bar |
 
 ## Runtime files (generated, not in repo)
 
@@ -44,7 +45,8 @@ All source files are in the repo root (flat layout):
 - **Image loading:** `QtConcurrent::run` offloads `QImageReader` reads; results pushed to a `QQuickImageProvider` via `QMetaObject::invokeMethod`.
 - **SMB mount:** On Linux, mounts via `mount -t cifs` to `/mnt/photoframe`. On Windows, uses `net use`. Config creds are passed on the command line — keep this in mind if adding logging.
 - **RTSP viewer:** QML `MediaPlayer` + `VideoOutput` with a retry overlay and auto-fallback to photos.
-- **Control bar:** Bottom bar with 6 buttons (time, date, video, settings, tasks, calendar). Time/date update every second via `m_tickTimer`. Bar is hidden during sleep.
+- **SignalNet integration:** TCP client connects to SignalNet home automation controller. Receives temperature, alerts (fire/water/gas), bell notifications, and media commands. Sends heartbeat pulse. Control bar shows temperature when connected.
+- **Control bar:** Bottom bar with 7 buttons (time, date, temperature, video, settings, tasks, calendar). Time/date update every second via `m_tickTimer`. Temperature shows when SignalNet is connected. Bar is hidden during sleep.
 
 ## Keyboard shortcuts
 
@@ -61,3 +63,4 @@ All source files are in the repo root (flat layout):
 ## Gotchas
 
 - RTSP via `QMediaPlayer` in Qt 5.12 has limited codec support — may fail silently on H.265 streams.
+- SignalNet client uses a simplified version of the snpcagent protocol (device address 3999, no memory blocks, no device info tasks).

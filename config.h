@@ -19,6 +19,16 @@ struct SmbConfig {
     bool useRtsp = false;
     QString rtspUrl;
 
+    // SignalNet интеграция
+    bool useSignalNet = false;
+    bool useUdp = false;
+    QString signalNetServer;
+    quint16 signalNetPort = 8888;
+    QString signalNetLogin;
+    QString signalNetPass;
+    quint16 signalNetUdpLocalPort = 29545;
+    QString signalNetUdpKey = "signalnet";
+
     void load(const QString& fileName = "photoframe.ini");
     void save(const QString& fileName = "photoframe.ini") const;
 };

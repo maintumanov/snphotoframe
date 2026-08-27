@@ -17,6 +17,15 @@ void SmbConfig::load(const QString& fileName) {
     
     useRtsp = s.value("rtsp/enable", false).toBool();
     rtspUrl = s.value("rtsp/url").toString();
+
+    useSignalNet = s.value("signalnet/enable", false).toBool();
+    useUdp = s.value("signalnet/useudp", false).toBool();
+    signalNetServer = s.value("signalnet/server").toString();
+    signalNetPort = static_cast<quint16>(s.value("signalnet/port", 8888).toUInt());
+    signalNetLogin = s.value("signalnet/login").toString();
+    signalNetPass = s.value("signalnet/pass").toString();
+    signalNetUdpLocalPort = static_cast<quint16>(s.value("signalnet/udplocalport", 29545).toUInt());
+    signalNetUdpKey = s.value("signalnet/udpkey", "signalnet").toString();
 }
 
 void SmbConfig::save(const QString& fileName) const {
@@ -36,4 +45,13 @@ void SmbConfig::save(const QString& fileName) const {
     
     s.setValue("rtsp/enable", useRtsp);
     s.setValue("rtsp/url", rtspUrl);
+
+    s.setValue("signalnet/enable", useSignalNet);
+    s.setValue("signalnet/useudp", useUdp);
+    s.setValue("signalnet/server", signalNetServer);
+    s.setValue("signalnet/port", signalNetPort);
+    s.setValue("signalnet/login", signalNetLogin);
+    s.setValue("signalnet/pass", signalNetPass);
+    s.setValue("signalnet/udplocalport", signalNetUdpLocalPort);
+    s.setValue("signalnet/udpkey", signalNetUdpKey);
 }
