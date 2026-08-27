@@ -18,6 +18,7 @@ ImageProvider::ImageProvider()
 
 QImage ImageProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize) {
     Q_UNUSED(id);
+    QMutexLocker lock(&m_mutex);
     if (size) *size = m_current.size();
     if (requestedSize.isValid())
         return m_current.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -25,6 +26,7 @@ QImage ImageProvider::requestImage(const QString& id, QSize* size, const QSize& 
 }
 
 void ImageProvider::setCurrentImage(const QImage& img) {
+    QMutexLocker lock(&m_mutex);
     m_current = img;
 }
 
@@ -34,6 +36,9 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
     : QObject(parent)
 {
     m_config.load();
+    qInfo() << "Config loaded: server=" << m_config.server << "share=" << m_config.share
+             << "useRtsp=" << m_config.useRtsp << "rtspUrl=" << m_config.rtspUrl
+             << "useGuest=" << m_config.useGuest;
 
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, &QTimer::timeout, this, &PhotoFrameBackend::onTick);
@@ -42,23 +47,32 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
     m_slideshowTimer = new QTimer(this);
     connect(m_slideshowTimer, &QTimer::timeout, this, &PhotoFrameBackend::nextSlide);
 
-    if (m_config.useRtsp && !m_config.rtspUrl.isEmpty()) {
-        emit rtspStarted(m_config.rtspUrl);
-        QTimer::singleShot(1000, this, &PhotoFrameBackend::connectAndScan);
-    } else {
+    m_rtspRetryTimer = new QTimer(this);
+    m_rtspRetryTimer->setSingleShot(true);
+    connect(m_rtspRetryTimer, &QTimer::timeout, this, &PhotoFrameBackend::onRtspRetryTimeout);
+
+    m_rtspFallbackTimer = new QTimer(this);
+    m_rtspFallbackTimer->setSingleShot(true);
+    connect(m_rtspFallbackTimer, &QTimer::timeout, this, &PhotoFrameBackend::onRtspFallbackTimeout);
+
+    // Defer all startup to after QML loads — signals need listeners
+    QTimer::singleShot(500, this, [this]() {
         m_playlist = PlaylistManager::load();
         if (!m_playlist.isEmpty()) {
+            qInfo() << "Loaded" << m_playlist.size() << "cached files";
             if (m_config.shuffle)
                 std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
             checkSchedule();
             if (!m_isSleeping) {
                 m_slideshowTimer->start(m_config.interval);
-                QTimer::singleShot(500, this, &PhotoFrameBackend::nextSlide);
+                nextSlide();
             }
-        } else {
-            QTimer::singleShot(1000, this, &PhotoFrameBackend::connectAndScan);
         }
-    }
+        // Always mount SMB / scan — needed so cached paths are accessible
+        // even if playlist was loaded from cache (SMB may not be mounted yet).
+        // When scan finishes it will replace the playlist and start the slideshow.
+        QTimer::singleShot(1000, this, &PhotoFrameBackend::connectAndScan);
+    });
 }
 
 PhotoFrameBackend::~PhotoFrameBackend() {
@@ -94,8 +108,13 @@ bool PhotoFrameBackend::shuffle() const { return m_config.shuffle; }
 bool PhotoFrameBackend::useSchedule() const { return m_config.useSchedule; }
 QString PhotoFrameBackend::wakeTimeStr() const { return m_config.wakeTime.toString("HH:mm"); }
 QString PhotoFrameBackend::sleepTimeStr() const { return m_config.sleepTime.toString("HH:mm"); }
+bool PhotoFrameBackend::useGuest() const { return m_config.useGuest; }
+QString PhotoFrameBackend::smbVers() const { return m_config.smbVers; }
 bool PhotoFrameBackend::useRtsp() const { return m_config.useRtsp; }
 QString PhotoFrameBackend::rtspUrl() const { return m_config.rtspUrl; }
+
+int PhotoFrameBackend::rtspState() const { return m_rtspState; }
+QString PhotoFrameBackend::rtspErrorMsg() const { return m_rtspErrorMsg; }
 
 // Settings setters
 void PhotoFrameBackend::setServer(const QString& v) { if (m_config.server != v) { m_config.server = v; emit configChanged(); } }
@@ -113,6 +132,8 @@ void PhotoFrameBackend::setSleepTimeStr(const QString& v) {
     QTime t = QTime::fromString(v, "HH:mm");
     if (t.isValid() && m_config.sleepTime != t) { m_config.sleepTime = t; emit configChanged(); }
 }
+void PhotoFrameBackend::setUseGuest(bool v) { if (m_config.useGuest != v) { m_config.useGuest = v; emit configChanged(); } }
+void PhotoFrameBackend::setSmbVers(const QString& v) { if (m_config.smbVers != v) { m_config.smbVers = v; emit configChanged(); } }
 void PhotoFrameBackend::setUseRtsp(bool v) { if (m_config.useRtsp != v) { m_config.useRtsp = v; emit configChanged(); } }
 void PhotoFrameBackend::setRtspUrl(const QString& v) { if (m_config.rtspUrl != v) { m_config.rtspUrl = v; emit configChanged(); } }
 
@@ -145,23 +166,43 @@ void PhotoFrameBackend::setSleepMode(bool sleep) {
 }
 
 void PhotoFrameBackend::nextSlide() {
-    if (m_playlist.isEmpty() || m_isSleeping) return;
-    QString path = m_playlist[m_idx];
-    m_idx = (m_idx + 1) % m_playlist.size();
+    if (m_playlist.isEmpty() || m_isSleeping) {
+        qInfo() << "nextSlide skipped: playlist=" << m_playlist.size() << "sleeping=" << m_isSleeping;
+        return;
+    }
+    int startIdx = m_idx;
+    int playlistSize = m_playlist.size();
+    QStringList playlist = m_playlist; // snapshot — safe to read from worker
+    qInfo() << "nextSlide: idx=" << startIdx << "of" << playlistSize;
 
-    QtConcurrent::run([this, path]() {
-        QImageReader reader(path);
-        reader.setAutoTransform(true);
-        QImage img = reader.read();
+    QtConcurrent::run([this, startIdx, playlistSize, playlist]() {
+        int idx = startIdx;
+        QImage loaded;
+        QString loadedPath;
+
+        // Skip broken files directly in the worker thread
+        for (int attempt = 0; attempt < kMaxConsecutiveFails; ++attempt) {
+            loadedPath = playlist[idx];
+            QImageReader reader(loadedPath);
+            reader.setAutoTransform(true);
+            loaded = reader.read();
+            if (!loaded.isNull()) break;
+            idx = (idx + 1) % playlistSize;
+        }
+
         if (m_destroyed) return;
-        if (img.isNull()) {
-            QMetaObject::invokeMethod(this, "nextSlide");
+
+        if (loaded.isNull()) {
+            m_idx = (idx + 1) % playlistSize;
             return;
         }
-        m_imageProvider->setCurrentImage(img);
+
+        m_idx = (idx + 1) % playlistSize;
+        m_imageProvider->setCurrentImage(loaded);
         m_imageCounter++;
         m_currentImagePath = QString("image://current/img?id=%1").arg(m_imageCounter);
         QMetaObject::invokeMethod(this, [this]() {
+            qInfo() << "Image loaded successfully, counter=" << m_imageCounter;
             emit imageChanged();
         });
     });
@@ -169,6 +210,7 @@ void PhotoFrameBackend::nextSlide() {
 
 void PhotoFrameBackend::prevSlide() {
     if (m_isSleeping || m_playlist.isEmpty()) return;
+    // nextSlide() reads m_idx then does +1, so we need -2 to go back one
     m_idx = (m_idx - 2 + m_playlist.size()) % m_playlist.size();
     nextSlide();
 }
@@ -181,37 +223,54 @@ void PhotoFrameBackend::toggleSlideshow() {
 }
 
 void PhotoFrameBackend::saveSettings() {
+    qInfo() << "Saving settings: server=" << m_config.server << "useRtsp=" << m_config.useRtsp;
     m_config.save();
     PlaylistManager::clear();
+    stopRtsp();
 
-    if (m_config.useRtsp && !m_config.rtspUrl.isEmpty()) {
-        m_slideshowTimer->stop();
-        emit rtspStarted(m_config.rtspUrl);
-    } else {
-        emit rtspStopped();
-        connectAndScan();
-    }
+    connectAndScan();
     setPageIndex(0);
 }
 
 void PhotoFrameBackend::connectAndScan() {
+    qInfo() << "connectAndScan: server=" << m_config.server << "scanning=" << m_scanning;
+    if (m_scanning) {
+        qInfo() << "Already scanning, skipping";
+        return;
+    }
     if (m_config.server.isEmpty()) {
+        qInfo() << "Server empty, showing settings";
         setPageIndex(1);
         return;
     }
-    QtConcurrent::run([this]() {
+    m_scanning = true;
+    QString server = m_config.server;
+    QString share = m_config.share;
+    QString user = m_config.user;
+    QString pass = m_config.pass;
+    QString smbVers = m_config.smbVers;
+    bool useGuest = m_config.useGuest;
+
+    QtConcurrent::run([this, server, share, user, pass, smbVers, useGuest]() {
 #ifdef Q_OS_WIN
-        QString path = QString(R"(\\%1\%2)").arg(m_config.server, m_config.share);
-        QProcess::execute("net", {"use", path, m_config.pass, QString("/user:%1").arg(m_config.user)});
+        QString path = QString(R"(\\%1\%2)").arg(server, share);
+        if (useGuest) {
+            QProcess::execute("net", {"use", path});
+        } else {
+            QProcess::execute("net", {"use", path, pass, QString("/user:%1").arg(user)});
+        }
 #else
         QDir().mkpath("/mnt/photoframe");
-        QString opts = QString("vers=%1,username=%2,password=%3").arg(m_config.smbVers, m_config.user, m_config.pass);
-        QProcess::execute("mount", {"-t", "cifs", QString("//%1/%2").arg(m_config.server, m_config.share), "/mnt/photoframe", "-o", opts});
+        QString opts = QString("vers=%1").arg(smbVers);
+        if (!useGuest) {
+            opts += QString(",username=%1,password=%2").arg(user, pass);
+        }
+        QProcess::execute("mount", {"-t", "cifs", QString("//%1/%2").arg(server, share), "/mnt/photoframe", "-o", opts});
 #endif
         if (m_destroyed) return;
         QString scanPath =
 #ifdef Q_OS_WIN
-            QString(R"(\\%1\%2)").arg(m_config.server, m_config.share);
+            QString(R"(\\%1\%2)").arg(server, share);
 #else
             "/mnt/photoframe";
 #endif
@@ -223,25 +282,126 @@ void PhotoFrameBackend::connectAndScan() {
     });
 }
 
+void PhotoFrameBackend::startRtsp() {
+    if (!m_config.useRtsp || m_config.rtspUrl.isEmpty()) return;
+    m_slideshowTimer->stop();
+    m_rtspRetryCount = 0;
+    m_rtspRetryTimer->stop();
+    m_rtspFallbackTimer->stop();
+    setRtspState(RtspConnecting);
+    m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435...");
+    emit rtspErrorMsgChanged();
+    emit rtspShowOverlay(m_rtspErrorMsg);
+    m_rtspFallbackTimer->start(5000);
+    emit rtspPlay(m_config.rtspUrl);
+}
+
+void PhotoFrameBackend::stopRtsp() {
+    m_rtspRetryTimer->stop();
+    m_rtspFallbackTimer->stop();
+    m_rtspRetryCount = 0;
+    setRtspState(RtspIdle);
+    emit rtspStopPlayer();
+    emit rtspHideOverlay();
+}
+
+void PhotoFrameBackend::reconnectRtsp() {
+    stopRtsp();
+    startRtsp();
+}
+
+void PhotoFrameBackend::setRtspState(RtspState s) {
+    if (m_rtspState != s) {
+        m_rtspState = s;
+        emit rtspStateChanged();
+    }
+}
+
+void PhotoFrameBackend::onRtspPlaying() {
+    m_rtspFallbackTimer->stop();
+    m_rtspRetryTimer->stop();
+    m_rtspRetryCount = 0;
+    setRtspState(RtspPlaying);
+    // Hide overlay after 5 seconds
+    QTimer::singleShot(5000, this, [this]() {
+        if (m_rtspState == RtspPlaying)
+            emit rtspHideOverlay();
+    });
+}
+
+void PhotoFrameBackend::onRtspError(const QString& msg) {
+    if (m_rtspState == RtspIdle) return; // already stopped
+    m_rtspFallbackTimer->stop();
+    m_rtspRetryCount++;
+
+    if (m_rtspRetryCount <= kMaxRtspRetries) {
+        m_rtspErrorMsg = msg + QString::fromUtf8(" \u2014 \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtspRetryCount).arg(kMaxRtspRetries);
+        emit rtspErrorMsgChanged();
+        emit rtspShowOverlay(m_rtspErrorMsg);
+        setRtspState(RtspError);
+        m_rtspRetryTimer->start(2000);
+    } else {
+        onRtspFallbackTimeout();
+    }
+}
+
+void PhotoFrameBackend::onRtspRetryTimeout() {
+    if (m_rtspState == RtspIdle) return;
+    m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435... \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtspRetryCount + 1).arg(kMaxRtspRetries);
+    emit rtspErrorMsgChanged();
+    emit rtspShowOverlay(m_rtspErrorMsg);
+    setRtspState(RtspConnecting);
+    emit rtspPlay(m_config.rtspUrl);
+    // Reset fallback timer on retry
+    m_rtspFallbackTimer->start(5000);
+}
+
+void PhotoFrameBackend::onRtspFallbackTimeout() {
+    stopRtsp();
+    m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443...");
+    emit rtspErrorMsgChanged();
+    emit rtspShowOverlay(m_rtspErrorMsg);
+    QTimer::singleShot(500, this, [this]() {
+        fallbackToPhotos();
+    });
+}
+
 void PhotoFrameBackend::fallbackToPhotos() {
     if (m_config.server.isEmpty()) {
         setPageIndex(1);
         return;
     }
-    m_playlist = PlaylistManager::load();
     connectAndScan();
 }
 
 void PhotoFrameBackend::onScanFinished(const QStringList& list) {
-    if (list.isEmpty()) { setPageIndex(1); return; }
+    m_scanning = false;
+    qInfo() << "Scan finished: found" << list.size() << "files";
+    if (list.isEmpty()) {
+        qInfo() << "No files found, showing settings";
+        setPageIndex(1);
+        return;
+    }
     m_playlist = list;
     PlaylistManager::save(m_playlist);
     if (m_config.shuffle)
         std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
     m_idx = 0;
+
+    if (m_rtspState != RtspPlaying) {
+        m_rtspFallbackTimer->stop();
+        m_rtspRetryTimer->stop();
+        setRtspState(RtspIdle);
+        emit rtspStopPlayer();
+        emit rtspHideOverlay();
+    }
+
     if (!m_isSleeping) {
+        qInfo() << "Starting slideshow: interval=" << m_config.interval << "ms";
         m_slideshowTimer->start(m_config.interval);
         nextSlide();
+    } else {
+        qInfo() << "Sleeping, not starting slideshow";
     }
 }
 

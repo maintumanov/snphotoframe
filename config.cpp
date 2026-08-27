@@ -6,6 +6,8 @@ void SmbConfig::load(const QString& fileName) {
     share = s.value("smb/share").toString();
     user = s.value("smb/user").toString();
     pass = s.value("smb/pass").toString();
+    useGuest = s.value("smb/guest", true).toBool();
+    smbVers = s.value("smb/vers", "3.0").toString();
     interval = s.value("ui/interval", 5000).toInt();
     shuffle = s.value("ui/shuffle", true).toBool();
 
@@ -23,6 +25,8 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("smb/share", share);
     s.setValue("smb/user", user);
     s.setValue("smb/pass", pass);
+    s.setValue("smb/guest", useGuest);
+    s.setValue("smb/vers", smbVers);
     s.setValue("ui/interval", interval);
     s.setValue("ui/shuffle", shuffle);
 

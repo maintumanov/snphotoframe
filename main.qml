@@ -12,8 +12,6 @@ ApplicationWindow {
     title: "DigitalPhotoFrame"
 
     property bool showingA: true
-    property bool showingVideo: false
-    property string rtspErrorMsg: ""
     property bool loading: true
     property string loadingText: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430..."
 
@@ -32,17 +30,18 @@ ApplicationWindow {
             }
             showingA = !showingA
         }
-        onSleepChanged: sleepOverlay.visible = sleeping
-        onRtspStarted: {
-            rtspErrorMsg = "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u043a\u0430\u043c\u0435\u0440\u0435..."
-            connectingOverlay.visible = true
+        onSleepChanged: { sleepOverlay.visible = sleeping }
+        onRtspPlay: {
             rtspPlayer.source = url
             rtspPlayer.play()
-            rtspFallbackTimer.start()
         }
-        onRtspStopped: {
-            showingVideo = false
+        onRtspStopPlayer: {
             rtspPlayer.stop()
+        }
+        onRtspShowOverlay: {
+            connectingOverlay.visible = true
+        }
+        onRtspHideOverlay: {
             connectingOverlay.visible = false
         }
     }
@@ -57,7 +56,7 @@ ApplicationWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             opacity: 1.0
-            visible: !showingVideo
+            visible: (backend.rtspState || 0) !== 2
         }
 
         Image {
@@ -66,7 +65,7 @@ ApplicationWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             opacity: 0.0
-            visible: !showingVideo
+            visible: (backend.rtspState || 0) !== 2
         }
 
         ParallelAnimation { id: animA
@@ -82,25 +81,19 @@ ApplicationWindow {
             id: rtspPlayer
             autoPlay: false
             onErrorChanged: {
-                if (error !== MediaPlayer.NoError) {
-                    rtspErrorMsg = errorString + " \u2014 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043d\u0430 \u0444\u043e\u0442\u043e..."
-                    connectingOverlay.visible = true
-                    rtspFallbackTimer.start()
-                }
+                if (error !== MediaPlayer.NoError)
+                    backend.onRtspError(errorString)
             }
             onPlaybackStateChanged: {
-                if (playbackState === MediaPlayer.PlayingState) {
-                    showingVideo = true
-                    rtspFallbackTimer.stop()
-                    hideTimer.start()
-                }
+                if (playbackState === MediaPlayer.PlayingState)
+                    backend.onRtspPlaying()
             }
         }
 
         VideoOutput {
             anchors.fill: parent
             source: rtspPlayer
-            visible: showingVideo && rtspPlayer.playbackState === MediaPlayer.PlayingState
+            visible: (backend.rtspState || 0) === 2 && rtspPlayer.playbackState === MediaPlayer.PlayingState
         }
 
         Rectangle {
@@ -119,7 +112,7 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 Text {
-                    text: rtspErrorMsg
+                    text: backend.rtspErrorMsg
                     color: "white"
                     font.pixelSize: 24
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -128,37 +121,12 @@ ApplicationWindow {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if (backend.useRtsp && backend.rtspUrl.length > 0) {
-                        rtspErrorMsg = "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435..."
-                        rtspPlayer.stop()
-                        rtspPlayer.source = backend.rtspUrl
-                        rtspPlayer.play()
-                    }
+                    if (backend.useRtsp && backend.rtspUrl.length > 0)
+                        backend.reconnectRtsp()
                 }
             }
         }
 
-        Timer {
-            id: hideTimer
-            interval: 5000
-            onTriggered: {
-                if (rtspPlayer.playbackState === MediaPlayer.PlayingState)
-                    connectingOverlay.visible = false
-            }
-        }
-
-        Timer {
-            id: rtspFallbackTimer
-            interval: 3000
-            onTriggered: {
-                showingVideo = false
-                rtspPlayer.stop()
-                connectingOverlay.visible = false
-                loadingText = "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443..."
-                loading = true
-                backend.fallbackToPhotos()
-            }
-        }
     }
 
     // SETTINGS OVERLAY
@@ -197,7 +165,34 @@ ApplicationWindow {
                 }
                 Row { spacing: 16; width: parent.width; topPadding: 8
                     Text { text: "\u041f\u0430\u0440\u043e\u043b\u044c:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
-                    TextField { id: pswField; text: backend.pass; onTextChanged: backend.pass = text; echoMode: TextInput.Password; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: pswField.activeFocus ? "#aaa" : "#555" } }
+                    TextField { id: pswField; text: backend.pass; onTextChanged: backend.pass = text; echoMode: TextInput.Password; enabled: !guestChk.checked; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: guestChk.checked ? "#111" : "#222"; border.color: pswField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 12; width: parent.width; topPadding: 8
+                    CheckBox {
+                        id: guestChk
+                        text: "\u0413\u043e\u0441\u0442\u0435\u0432\u043e\u0439 \u0434\u043e\u0441\u0442\u0443\u043f"
+                        checked: backend.useGuest ? true : false
+                        onCheckedChanged: backend.useGuest = checked
+                        contentItem: Text { text: guestChk.text; color: "white"; font.pixelSize: 20; leftPadding: guestChk.indicator.width + 8; verticalAlignment: Text.AlignVCenter }
+                        indicator: Rectangle { width: 24; height: 24; radius: 6; color: guestChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                Row { spacing: 16; width: parent.width; topPadding: 8
+                    Text { text: "\u0421\u043c\u0431 (\u0432\u0435\u0440\u0441\u0438\u044f):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    ComboBox {
+                        id: smbCombo
+                        model: ["1.0", "2.0", "2.1", "3.0", "3.1.1"]
+                        currentIndex: model.indexOf(backend.smbVers)
+                        onActivated: backend.smbVers = currentText
+                        width: 200
+                        background: Rectangle { radius: 8; color: "#222"; border.color: "#555" }
+                        contentItem: Text { text: smbCombo.displayText; color: "white"; font.pixelSize: 20; verticalAlignment: Text.AlignVCenter; leftPadding: 12 }
+                        delegate: ItemDelegate {
+                            width: smbCombo.width
+                            contentItem: Text { text: modelData; color: "white"; font.pixelSize: 20; verticalAlignment: Text.AlignVCenter; leftPadding: 12 }
+                            background: Rectangle { color: index === smbCombo.currentIndex ? "#444" : "#222" }
+                        }
+                    }
                 }
                 Row { spacing: 16; width: parent.width; topPadding: 8
                     Text { text: "\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
@@ -311,8 +306,8 @@ ApplicationWindow {
         property var today: new Date()
         property int dy: today.getFullYear()
         property int dm: today.getMonth()
-        property int dim: new Date(dy, dm + 1, 0).getDate()
-        property int fdow: new Date(dy, dm, 1).getDay()
+        readonly property int dim: new Date(dy, dm + 1, 0).getDate()
+        readonly property int fdow: new Date(dy, dm, 1).getDay()
 
         function mn(m) { return ["\u042f\u043d\u0432\u0430\u0440\u044c","\u0424\u0435\u0432\u0440\u0430\u043b\u044c","\u041c\u0430\u0440\u0442","\u0410\u043f\u0440\u0435\u043b\u044c","\u041c\u0430\u0439","\u0418\u044e\u043d\u044c","\u0418\u044e\u043b\u044c","\u0410\u0432\u0433\u0443\u0441\u0442","\u0421\u0435\u043d\u0442\u044f\u0431\u0440\u044c","\u041e\u043a\u0442\u044f\u0431\u0440\u044c","\u041d\u043e\u044f\u0431\u0440\u044c","\u0414\u0435\u043a\u0430\u0431\u0440\u044c"][m] }
         function dn(d) { return ["\u0412\u0441","\u041f\u043d","\u0412\u0442","\u0421\u0440","\u0427\u0442","\u041f\u0442","\u0421\u0431"][d] }
@@ -352,11 +347,11 @@ ApplicationWindow {
                 Text { text: backend.currentTime; color: "white"; font.pixelSize: 24; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
             Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 2
                 Text { text: backend.currentDate; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
-            Rectangle { width: 56; height: 56; radius: 14; color: showingVideo ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
+            Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
                 Text { text: "\u25b6"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
                 MouseArea { id: vma; anchors.fill: parent; onClicked: {
-                    if (showingVideo) { showingVideo = false; rtspPlayer.stop() }
-                    else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) { showingVideo = true; rtspPlayer.source = backend.rtspUrl; rtspPlayer.play() } }
+                    if ((backend.rtspState || 0) !== 0) { backend.stopRtsp() }
+                    else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) backend.reconnectRtsp() }
                 } } }
             Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 1 ? "#4dffffff" : (sma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
                 Text { text: "\u2261"; color: "white"; font.pixelSize: 28; font.bold: true; anchors.centerIn: parent }
@@ -379,7 +374,7 @@ ApplicationWindow {
         color: "#aa111111"
         border.color: "#555"
         border.width: 1
-        visible: loading && !showingVideo && backend.pageIndex === 0
+        visible: loading && (backend.rtspState || 0) !== 2 && backend.pageIndex === 0
         z: 5
         Column {
             anchors.centerIn: parent
@@ -401,7 +396,7 @@ ApplicationWindow {
 
     Rectangle { id: sleepOverlay; anchors.fill: parent; color: "black"; visible: false; z: 50 }
 
-    MouseArea { anchors.fill: parent; z: 1; visible: backend.pageIndex === 0 && !showingVideo; onClicked: backend.nextSlide(); propagateComposedEvents: true }
+    MouseArea { anchors.fill: parent; z: 1; visible: backend.pageIndex === 0 && (backend.rtspState || 0) !== 2; onClicked: backend.nextSlide(); propagateComposedEvents: true }
 
     Item { anchors.fill: parent; focus: true; z: -1
         Keys.onPressed: {
@@ -410,8 +405,8 @@ ApplicationWindow {
             else if (event.key === Qt.Key_Space) backend.toggleSlideshow()
             else if (event.key === Qt.Key_S || event.key === Qt.Key_Escape) backend.pageIndex = backend.pageIndex === 1 ? 0 : 1
             else if (event.key === Qt.Key_V) {
-                if (showingVideo) { showingVideo = false; rtspPlayer.stop() }
-                else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) { showingVideo = true; rtspPlayer.source = backend.rtspUrl; rtspPlayer.play() } }
+                if ((backend.rtspState || 0) !== 0) backend.stopRtsp()
+                else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) backend.reconnectRtsp() }
             }
             else if (event.key === Qt.Key_T) backend.pageIndex = backend.pageIndex === 2 ? 0 : 2
             else if (event.key === Qt.Key_C) backend.pageIndex = backend.pageIndex === 3 ? 0 : 3

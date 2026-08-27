@@ -7,9 +7,9 @@ Qt5 C++ desktop app — digital photo frame for Raspberry Pi (also runs on Windo
 ## Build
 
 - **Build system:** qmake (`DigitalPhotoFrame.pro`)
-- **Qt version:** 5.12.12, MinGW 32-bit
+- **Qt version:** 5.12
 - **Qt path:** `C:/Qt/Qt5.12.12/5.12.12/mingw73_32`
-- **Modules used:** `core gui widgets network concurrent multimedia multimediawidgets`
+- **Modules used:** `core gui qml quick network concurrent multimedia`
 - **C++ standard:** C++14
 
 Build with:
@@ -26,12 +26,11 @@ All source files are in the repo root (flat layout):
 
 | File | Role |
 |---|---|
-| `main.cpp` | Entry point — creates `PhotoFrame` |
-| `photoframe.cpp/h` | Main window, slideshow engine, settings dialog, schedule, RTSP toggle |
-| `imagedisplay.cpp/h` | Custom widget that paints a scaled pixmap |
-| `rtspviewer.cpp/h` | RTSP video playback via `QMediaPlayer` + `QVideoWidget` |
+| `main.cpp` | Entry point — creates `PhotoFrameBackend`, loads QML engine |
+| `photoframe.cpp/h` | QML backend (QObject) — slideshow engine, settings, schedule, RTSP toggle |
 | `playlistmanager.cpp/h` | Reads/writes `playlist.txt` (one path per line) |
 | `config.cpp/h` | `SmbConfig` struct, reads/writes `photoframe.ini` via `QSettings` |
+| `main.qml` | QML UI — crossfade images, settings overlay, tasks, calendar, RTSP, control bar |
 
 ## Runtime files (generated, not in repo)
 
@@ -41,12 +40,11 @@ All source files are in the repo root (flat layout):
 
 ## Key architecture notes
 
-- **Crossfade:** Two `ImageDisplay` widgets (`m_viewA`/`m_viewB`) with `QGraphicsOpacityEffect`, animated with `QPropertyAnimation`. Active view opacity toggles between 0 and 1.
-- **Image loading:** `QtConcurrent::run` offloads `QImageReader` reads; results marshalled back via `QMetaObject::invokeMethod`.
+- **Crossfade:** Two QML `Image` elements (`imageA`/`imageB`) animated with `ParallelAnimation` (opacity 0↔1).
+- **Image loading:** `QtConcurrent::run` offloads `QImageReader` reads; results pushed to a `QQuickImageProvider` via `QMetaObject::invokeMethod`.
 - **SMB mount:** On Linux, mounts via `mount -t cifs` to `/mnt/photoframe`. On Windows, uses `net use`. Config creds are passed on the command line — keep this in mind if adding logging.
-- **Sleep mode:** Black overlay widget covers the screen and hides the control bar. On Raspberry Pi, HDMI power control is commented out but ready (`vcgencmd display_power`).
-- **Schedule:** Wake/sleep times can cross midnight (e.g., 23:00–07:00). The `checkSchedule` logic handles both orderings.
-- **Control bar:** Bottom bar (`m_controlBar`) with 6 buttons (time, date, video, equalizer, tasks, calendar). Time/date buttons update every second via `m_clockTimer`, are non-interactive (`WA_TransparentForMouseEvents`). Bar is hidden during sleep and raised after crossfade.
+- **RTSP viewer:** QML `MediaPlayer` + `VideoOutput` with a retry overlay and auto-fallback to photos.
+- **Control bar:** Bottom bar with 6 buttons (time, date, video, settings, tasks, calendar). Time/date update every second via `m_tickTimer`. Bar is hidden during sleep.
 
 ## Keyboard shortcuts
 
@@ -62,7 +60,4 @@ All source files are in the repo root (flat layout):
 
 ## Gotchas
 
-- No type system or static analysis — watch for null `m_player` in `RtspViewer` (it can be destroyed during `hideEvent`).
-- `config.json` in `.opencode/` says `"build_system": "cmake"` but the repo uses qmake. Ignore that field.
-- `PlaylistManager::clear()` deletes the file on settings save, forcing a fresh SMB scan on next launch.
 - RTSP via `QMediaPlayer` in Qt 5.12 has limited codec support — may fail silently on H.265 streams.
