@@ -323,6 +323,11 @@ void SignalNet::onEventNumInput(int numInput, QByteArray data)
         emit navLeft();
         break;
     }
+    case input_camera: {
+        qInfo() << "SignalNet: camera on";
+        emit cameraOn();
+        break;
+    }
     case input_statusAbsence: {
         if (!m_absenceMode) {
             m_absenceMode = true;

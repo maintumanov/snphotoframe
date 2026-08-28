@@ -66,6 +66,7 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(bool signalNetUseUdp READ signalNetUseUdp WRITE setSignalNetUseUdp NOTIFY configChanged)
     Q_PROPERTY(int signalNetUdpLocalPort READ signalNetUdpLocalPort WRITE setSignalNetUdpLocalPort NOTIFY configChanged)
     Q_PROPERTY(QString signalNetUdpKey READ signalNetUdpKey WRITE setSignalNetUdpKey NOTIFY configChanged)
+    Q_PROPERTY(int cameraDuration READ cameraDuration WRITE setCameraDuration NOTIFY configChanged)
 
 public:
     explicit PhotoFrameBackend(QObject* parent = nullptr);
@@ -143,6 +144,8 @@ public:
     QString signalNetAlert() const;
     int signalNetAlertSeverity() const;
     bool signalNetTemperatureValid() const;
+    int cameraDuration() const;
+    void setCameraDuration(int v);
 
     Q_INVOKABLE void connectSignalNet();
     Q_INVOKABLE void disconnectSignalNet();
@@ -183,6 +186,7 @@ private slots:
     void onScanFinished(const QStringList& list);
     void onRtspRetryTimeout();
     void onRtspFallbackTimeout();
+    void onCameraTimeout();
 
 private:
     void checkSchedule();
@@ -212,6 +216,7 @@ private:
     ImageProvider* m_imageProvider = nullptr;
     SignalNet* m_signalNet = nullptr;
     QSoundEffect* m_alertSound = nullptr;
+    QTimer* m_cameraTimer = nullptr;
 
 };
 

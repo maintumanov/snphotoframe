@@ -19,6 +19,7 @@
 #include <cmath>
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 // --- ImageProvider ---
 
@@ -110,6 +111,18 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
             m_alertSound->play();
     });
 
+    // Camera on from SignalNet — start RTSP for configured duration
+    m_cameraTimer = new QTimer(this);
+    m_cameraTimer->setSingleShot(true);
+    connect(m_cameraTimer, &QTimer::timeout, this, &PhotoFrameBackend::onCameraTimeout);
+    connect(m_signalNet, &SignalNet::cameraOn, this, [this]() {
+        if (m_config.useRtsp && !m_config.rtspUrl.isEmpty() && m_rtspState == RtspIdle) {
+            qInfo() << "Camera ON via SignalNet for" << m_config.cameraDuration << "sec";
+            startRtsp();
+            m_cameraTimer->start(m_config.cameraDuration * 1000);
+        }
+    });
+
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, &QTimer::timeout, this, &PhotoFrameBackend::onTick);
     m_tickTimer->start(1000);
@@ -130,8 +143,10 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
         m_playlist = PlaylistManager::load();
         if (!m_playlist.isEmpty()) {
             qInfo() << "Loaded" << m_playlist.size() << "cached files";
-            if (m_config.shuffle)
-                std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
+            if (m_config.shuffle) {
+                auto seed = std::chrono::steady_clock::now().time_since_epoch().count();
+                std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(static_cast<unsigned>(seed)));
+            }
             checkSchedule();
             if (!m_isSleeping) {
                 m_slideshowTimer->start(m_config.interval);
@@ -153,7 +168,7 @@ QString PhotoFrameBackend::currentTime() const {
 }
 
 QString PhotoFrameBackend::currentDate() const {
-    return QDate::currentDate().toString("dd.MM");
+    return QDate::currentDate().toString("dd.MM.yyyy");
 }
 
 QString PhotoFrameBackend::currentImagePath() const {
@@ -215,6 +230,13 @@ qreal PhotoFrameBackend::signalNetTemperature() const { return m_signalNet ? m_s
 QString PhotoFrameBackend::signalNetAlert() const { return m_signalNet ? m_signalNet->lastAlert() : QString(); }
 int PhotoFrameBackend::signalNetAlertSeverity() const { return m_signalNet ? m_signalNet->alertSeverity() : 0; }
 bool PhotoFrameBackend::signalNetTemperatureValid() const { return m_signalNet && m_signalNet->isTemperatureValid(); }
+int PhotoFrameBackend::cameraDuration() const { return m_config.cameraDuration; }
+void PhotoFrameBackend::setCameraDuration(int v) { if (m_config.cameraDuration != v) { m_config.cameraDuration = v; emit configChanged(); } }
+
+void PhotoFrameBackend::onCameraTimeout() {
+    qInfo() << "Camera OFF — timeout";
+    stopRtsp();
+}
 
 // SignalNet setters
 void PhotoFrameBackend::setUseSignalNet(bool v) { if (m_config.useSignalNet != v) { m_config.useSignalNet = v; emit configChanged(); } }
@@ -496,8 +518,10 @@ void PhotoFrameBackend::onScanFinished(const QStringList& list) {
     }
     m_playlist = list;
     PlaylistManager::save(m_playlist);
-    if (m_config.shuffle)
-        std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(std::random_device()()));
+    if (m_config.shuffle) {
+        auto seed = std::chrono::steady_clock::now().time_since_epoch().count();
+        std::shuffle(m_playlist.begin(), m_playlist.end(), std::mt19937(static_cast<unsigned>(seed)));
+    }
     m_idx = 0;
 
     if (m_rtspState != RtspPlaying) {

@@ -14,7 +14,7 @@ void SmbConfig::load(const QString& fileName) {
     useSchedule = s.value("schedule/enable", false).toBool();
     wakeTime = s.value("schedule/wake", QTime(7, 0)).toTime();
     sleepTime = s.value("schedule/sleep", QTime(23, 0)).toTime();
-    
+
     useRtsp = s.value("rtsp/enable", false).toBool();
     rtspUrl = s.value("rtsp/url").toString();
 
@@ -26,6 +26,7 @@ void SmbConfig::load(const QString& fileName) {
     signalNetPass = s.value("signalnet/pass").toString();
     signalNetUdpLocalPort = static_cast<quint16>(s.value("signalnet/udplocalport", 29545).toUInt());
     signalNetUdpKey = s.value("signalnet/udpkey", "signalnet").toString();
+    cameraDuration = s.value("signalnet/cameraduration", 30).toInt();
 }
 
 void SmbConfig::save(const QString& fileName) const {
@@ -42,7 +43,7 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("schedule/enable", useSchedule);
     s.setValue("schedule/wake", wakeTime);
     s.setValue("schedule/sleep", sleepTime);
-    
+
     s.setValue("rtsp/enable", useRtsp);
     s.setValue("rtsp/url", rtspUrl);
 
@@ -54,4 +55,5 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("signalnet/pass", signalNetPass);
     s.setValue("signalnet/udplocalport", signalNetUdpLocalPort);
     s.setValue("signalnet/udpkey", signalNetUdpKey);
+    s.setValue("signalnet/cameraduration", cameraDuration);
 }

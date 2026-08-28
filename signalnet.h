@@ -45,6 +45,7 @@ class QsnUDPclient;
 #define input_previous 9
 #define input_right 10
 #define input_left 11
+#define input_camera 12
 
 // -- отладка --
 
@@ -111,6 +112,7 @@ signals:
     void bellPressed(const QString &message);
     void alertReceived(const QString &type, int severity);
     void poweroffRequested();
+    void cameraOn();
 
     // Connection status
     void connectionError(const QString &msg);

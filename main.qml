@@ -102,22 +102,103 @@ ApplicationWindow {
             color: "black"
             visible: false
             z: 1
+            opacity: 0
+            Behavior on opacity { NumberAnimation { duration: 300 } }
+            onVisibleChanged: { if (visible) opacity = 1; else opacity = 0 }
+
+            // Animated camera icon
             Column {
                 anchors.centerIn: parent
-                spacing: 16
-                Text {
-                    text: "\u26a0"
-                    color: "#f55"
-                    font.pixelSize: 64
-                    anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 24
+
+                Item { width: 120; height: 120; anchors.horizontalCenter: parent.horizontalCenter
+                    // Pulsing ring
+                    Rectangle {
+                        id: pulseRing
+                        width: 120; height: 120; radius: 60
+                        color: "transparent"
+                        border.color: (backend.rtspState || 0) === 3 ? "#f55" : "#5af"
+                        border.width: 3
+                        anchors.centerIn: parent
+                        SequentialAnimation on scale {
+                            running: connectingOverlay.visible
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0.8; to: 1.3; duration: 1200; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 1.3; to: 0.8; duration: 1200; easing.type: Easing.InOutQuad }
+                        }
+                        SequentialAnimation on opacity {
+                            running: connectingOverlay.visible
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0.8; to: 0.2; duration: 1200; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 0.2; to: 0.8; duration: 1200; easing.type: Easing.InOutQuad }
+                        }
+                    }
+                    // Camera icon
+                    Text {
+                        text: (backend.rtspState || 0) === 3 ? "\u26a0" : "\u25b6"
+                        color: (backend.rtspState || 0) === 3 ? "#f55" : "#5af"
+                        font.pixelSize: 48
+                        anchors.centerIn: parent
+                        SequentialAnimation on opacity {
+                            running: connectingOverlay.visible
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 1.0; to: 0.4; duration: 800; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 0.4; to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
+                        }
+                    }
                 }
+
+                // Status text
                 Text {
-                    text: backend.rtspErrorMsg
+                    id: statusText
+                    text: (backend.rtspState || 0) === 3 ? backend.rtspErrorMsg : backend.rtspErrorMsg
                     color: "white"
                     font.pixelSize: 24
+                    font.bold: true
                     anchors.horizontalCenter: parent.horizontalCenter
+                    opacity: 1
+                    SequentialAnimation on opacity {
+                        running: connectingOverlay.visible && (backend.rtspState || 0) !== 3
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
+                        NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
+                    }
+                }
+
+                // Animated dots
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 12
+                    visible: (backend.rtspState || 0) !== 3
+                    Repeater {
+                        model: 3
+                        Rectangle {
+                            width: 10; height: 10; radius: 5
+                            color: "#5af"
+                            property int idx: index
+                            SequentialAnimation on opacity {
+                                running: connectingOverlay.visible
+                                loops: Animation.Infinite
+                                PauseAnimation { duration: idx * 300 }
+                                NumberAnimation { from: 0.2; to: 1.0; duration: 400 }
+                                PauseAnimation { duration: 200 }
+                                NumberAnimation { from: 1.0; to: 0.2; duration: 400 }
+                                PauseAnimation { duration: 600 - idx * 300 }
+                            }
+                        }
+                    }
+                }
+
+                // Retry hint on error
+                Text {
+                    text: "\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u0434\u043b\u044f \u043f\u043e\u0432\u0442\u043e\u0440\u0430"
+                    color: "#888"
+                    font.pixelSize: 18
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: (backend.rtspState || 0) === 3
                 }
             }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
@@ -129,6 +210,8 @@ ApplicationWindow {
 
     }
 
+    property int settingsTab: 0
+
     // SETTINGS OVERLAY
     Rectangle {
         anchors.fill: parent
@@ -136,20 +219,39 @@ ApplicationWindow {
         visible: backend.pageIndex === 1
         z: 10
 
-        Flickable {
-            anchors.fill: parent
-            contentHeight: settingsCol.height + 40
-            clip: true
+        // Tab bar
+        Row {
+            id: tabBar
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: 56; z: 2
+            Repeater {
+                model: ["\u0421\u0435\u0442\u044c", "\u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435", "RTSP", "SignalNet"]
+                Rectangle {
+                    width: tabBar.width / 4; height: 56
+                    color: settingsTab === index ? "#333" : "#1a1a1a"
+                    border.color: settingsTab === index ? "#5af" : "#333"
+                    border.width: settingsTab === index ? 2 : 1
+                    Text {
+                        text: modelData; color: settingsTab === index ? "#5af" : "#aaa"
+                        font.pixelSize: 20; font.bold: settingsTab === index
+                        anchors.centerIn: parent
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: settingsTab = index }
+                }
+            }
+        }
 
-            Column {
-                id: settingsCol
-                width: parent.width - 100
-                x: 50
-                y: 20
-                spacing: 0
+        StackLayout {
+            anchors.top: tabBar.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            currentIndex: settingsTab
 
-                Text { text: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438"; color: "white"; font.pixelSize: 36; font.bold: true; bottomPadding: 20 }
-                Text { text: "\u0421\u0435\u0442\u044c"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 10; bottomPadding: 8 }
+            // === TAB 0: Сеть ===
+            Flickable {
+                contentHeight: netCol.height + 40; clip: true
+                Column {
+                    id: netCol; width: parent.width - 80; x: 40; y: 20; spacing: 0
+
+                    Text { text: "\u0421\u0435\u0442\u044c"; color: "#aaa"; font.pixelSize: 22; font.bold: true; bottomPadding: 8 }
 
                 Row { spacing: 16; width: parent.width
                     Text { text: "\u0421\u0435\u0440\u0432\u0435\u0440:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
@@ -224,7 +326,16 @@ ApplicationWindow {
                     }
                 }
 
-                Text { text: "\u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
+                }
+            }
+
+            // === TAB 1: Расписание ===
+            Flickable {
+                contentHeight: schedCol.height + 40; clip: true
+                Column {
+                    id: schedCol; width: parent.width - 80; x: 40; y: 20; spacing: 0
+
+                    Text { text: "\u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435"; color: "#aaa"; font.pixelSize: 22; font.bold: true; bottomPadding: 8 }
 
                 Row { spacing: 12; width: parent.width
                     CheckBox {
@@ -245,7 +356,16 @@ ApplicationWindow {
                     TextField { id: sleepField; text: backend.sleepTime; onEditingFinished: backend.sleepTime = text; width: 120; color: "white"; font.pixelSize: 20; padding: 10; inputMethodHints: Qt.ImhTime; background: Rectangle { radius: 8; color: "#222"; border.color: "#555" } }
                 }
 
-                Text { text: "RTSP"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
+                }
+            }
+
+            // === TAB 2: RTSP ===
+            Flickable {
+                contentHeight: rtspCol.height + 40; clip: true
+                Column {
+                    id: rtspCol; width: parent.width - 80; x: 40; y: 20; spacing: 0
+
+                    Text { text: "RTSP"; color: "#aaa"; font.pixelSize: 22; font.bold: true; bottomPadding: 8 }
 
                 Row { spacing: 12; width: parent.width
                     CheckBox {
@@ -262,7 +382,16 @@ ApplicationWindow {
                     TextField { id: rtspField; text: backend.rtspUrl; onTextChanged: backend.rtspUrl = text; placeholderText: "rtsp://user:pass@ip:port/stream"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: rtspField.activeFocus ? "#aaa" : "#555" } }
                 }
 
-                Text { text: "SignalNet"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
+                }
+            }
+
+            // === TAB 3: SignalNet ===
+            Flickable {
+                contentHeight: snCol.height + 40; clip: true
+                Column {
+                    id: snCol; width: parent.width - 80; x: 40; y: 20; spacing: 0
+
+                    Text { text: "SignalNet"; color: "#aaa"; font.pixelSize: 22; font.bold: true; bottomPadding: 8 }
 
                 Row { spacing: 12; width: parent.width
                     CheckBox {
@@ -326,18 +455,31 @@ ApplicationWindow {
                     Text { text: backend.signalNetConnected ? "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e" : "\u041e\u0442\u043a\u043b\u044e\u0447\u0435\u043d\u043e"; color: backend.signalNetConnected ? "#5a5" : "#f55"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                Item { width: 1; height: 30 }
-
-                Row { spacing: 20; anchors.horizontalCenter: parent.horizontalCenter; bottomPadding: 30
-                    Rectangle { width: 160; height: 56; radius: 14; color: exitMa.pressed ? "#666" : exitMa.containsMouse ? "#444" : "transparent"; border.color: "white"; border.width: 2
-                        Text { text: "\u0412\u044b\u0445\u043e\u0434"; color: "white"; font.pixelSize: 22; font.bold: true; anchors.centerIn: parent }
-                        MouseArea { id: exitMa; anchors.fill: parent; hoverEnabled: true; onClicked: backend.pageIndex = 0 }
-                    }
-                    Rectangle { width: 160; height: 56; radius: 14; color: saveMa.pressed ? "#666" : saveMa.containsMouse ? "#444" : "transparent"; border.color: "white"; border.width: 2
-                        Text { text: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"; color: "white"; font.pixelSize: 22; font.bold: true; anchors.centerIn: parent }
-                        MouseArea { id: saveMa; anchors.fill: parent; hoverEnabled: true; onClicked: backend.saveSettings() }
+                Text { text: "\u041a\u0430\u043c\u0435\u0440\u0430"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
+                Row { spacing: 16; width: parent.width; topPadding: 8
+                    Text { text: "\u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043a\u0430\u0437\u0430 (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 200; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: camDurField
+                        text: backend.cameraDuration
+                        onTextChanged: { var v = parseInt(text); if (v > 0) backend.cameraDuration = v }
+                        placeholderText: "30"
+                        width: 100; color: "white"; font.pixelSize: 20; padding: 10
+                        validator: IntValidator { bottom: 1; top: 3600 }
+                        background: Rectangle { radius: 8; color: "#222"; border.color: camDurField.activeFocus ? "#aaa" : "#555" }
                     }
                 }
+            }
+        }
+        } // StackLayout
+
+        // Bottom buttons (always visible)
+        Row { spacing: 20; anchors.bottom: parent.bottom; anchors.bottomMargin: 20; anchors.horizontalCenter: parent.horizontalCenter; z: 2
+            Rectangle { width: 160; height: 56; radius: 14; color: exitMa.pressed ? "#666" : exitMa.containsMouse ? "#444" : "transparent"; border.color: "white"; border.width: 2
+                Text { text: "\u0412\u044b\u0445\u043e\u0434"; color: "white"; font.pixelSize: 22; font.bold: true; anchors.centerIn: parent }
+                MouseArea { id: exitMa; anchors.fill: parent; hoverEnabled: true; onClicked: backend.pageIndex = 0 }
+            }
+            Rectangle { width: 160; height: 56; radius: 14; color: saveMa.pressed ? "#666" : saveMa.containsMouse ? "#444" : "transparent"; border.color: "white"; border.width: 2
+                Text { text: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"; color: "white"; font.pixelSize: 22; font.bold: true; anchors.centerIn: parent }
+                MouseArea { id: saveMa; anchors.fill: parent; hoverEnabled: true; onClicked: backend.saveSettings() }
             }
         }
     }
@@ -405,27 +547,25 @@ ApplicationWindow {
     // CONTROL BAR
     Rectangle {
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-        height: 100; color: "transparent"; visible: !sleepOverlay.visible; z: 20
+        height: 100; color: "transparent"; visible: !sleepOverlay.visible && backend.pageIndex !== 1; z: 20
         Row { anchors.centerIn: parent; anchors.bottom: parent.bottom; anchors.bottomMargin: 40; spacing: 16
-            Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 2
+            Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 1
                 Text { text: backend.currentTime; color: "white"; font.pixelSize: 24; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
-            Rectangle { width: 84; height: 56; radius: 14; color: "#4d000000"; border.color: "white"; border.width: 2
-                Text { text: backend.currentDate; color: "white"; font.pixelSize: 18; font.bold: true; font.family: "Consolas, monospace"; anchors.centerIn: parent } }
-            Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
+            Rectangle { width: 140; height: 56; radius: 14; color: backend.pageIndex === 3 ? "#4dffffff" : (dma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
+                Text { text: backend.currentDate; color: "white"; font.pixelSize: 22; font.bold: true; font.family: "Consolas, monospace"; anchors.fill: parent; leftPadding: 10; rightPadding: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                MouseArea { id: dma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 3 ? 0 : 3 } }
+            Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
                 Text { text: "\u25b6"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
                 MouseArea { id: vma; anchors.fill: parent; onClicked: {
                     if ((backend.rtspState || 0) !== 0) { backend.stopRtsp() }
                     else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) backend.reconnectRtsp() }
                 } } }
-            Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 1 ? "#4dffffff" : (sma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
+            Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 1 ? "#4dffffff" : (sma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
                 Text { text: "\u2261"; color: "white"; font.pixelSize: 28; font.bold: true; anchors.centerIn: parent }
                 MouseArea { id: sma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 1 ? 0 : 1 } }
-            Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 2 ? "#4dffffff" : (tma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
+            Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 2 ? "#4dffffff" : (tma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
                 Text { text: "\u2713"; color: "white"; font.pixelSize: 24; font.bold: true; anchors.centerIn: parent }
                 MouseArea { id: tma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 2 ? 0 : 2 } }
-            Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 3 ? "#4dffffff" : (cma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 2
-                Text { text: "\u2605"; color: "white"; font.pixelSize: 22; anchors.centerIn: parent }
-                MouseArea { id: cma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 3 ? 0 : 3 } }
         }
     }
 
