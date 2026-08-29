@@ -44,6 +44,20 @@ ApplicationWindow {
         onRtspHideOverlay: {
             connectingOverlay.visible = false
         }
+        onRtsp2Play: { rtspPlayer2.source = url; rtspPlayer2.play() }
+        onRtsp2StopPlayer: { rtspPlayer2.stop() }
+        onRtsp2ShowOverlay: { connectingOverlay2.visible = true }
+        onRtsp2HideOverlay: { connectingOverlay2.visible = false }
+        onRtsp3Play: { rtspPlayer3.source = url; rtspPlayer3.play() }
+        onRtsp3StopPlayer: { rtspPlayer3.stop() }
+        onRtsp3ShowOverlay: { connectingOverlay3.visible = true }
+        onRtsp3HideOverlay: { connectingOverlay3.visible = false }
+        onSignalNetAlertChanged: {
+            if (backend.signalNetAlert.length > 0) {
+                snAlertBanner.visible = true
+                snAlertBanner.opacity = 1
+            }
+        }
     }
 
     Item {
@@ -208,6 +222,58 @@ ApplicationWindow {
             }
         }
 
+        // Camera 2
+        MediaPlayer {
+            id: rtspPlayer2; autoPlay: false
+            onErrorChanged: { if (error !== MediaPlayer.NoError) backend.onRtsp2Error(errorString) }
+            onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp2Playing() }
+        }
+        VideoOutput { anchors.fill: parent; source: rtspPlayer2; visible: (backend.rtsp2State || 0) === 2 && rtspPlayer2.playbackState === MediaPlayer.PlayingState }
+        Rectangle {
+            id: connectingOverlay2; anchors.fill: parent; color: "black"; visible: false; z: 1; opacity: 0
+            Behavior on opacity { NumberAnimation { duration: 300 } }
+            onVisibleChanged: { if (visible) opacity = 1; else opacity = 0 }
+            Column { anchors.centerIn: parent; spacing: 16
+                Item { width: 80; height: 80; anchors.horizontalCenter: parent.horizontalCenter
+                    Rectangle { width: 80; height: 80; radius: 40; color: "transparent"; border.color: (backend.rtsp2State || 0) === 3 ? "#f55" : "#5af"; border.width: 3; anchors.centerIn: parent
+                        SequentialAnimation on scale { running: connectingOverlay2.visible; loops: Animation.Infinite
+                            NumberAnimation { from: 0.8; to: 1.3; duration: 1200; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 1.3; to: 0.8; duration: 1200; easing.type: Easing.InOutQuad }
+                        }
+                    }
+                    Image { width: 28; height: 28; anchors.centerIn: parent; source: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235af'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E" }
+                }
+                Text { text: (backend.rtsp2State || 0) === 3 ? backend.rtsp2ErrorMsg : "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435..."; color: "white"; font.pixelSize: 20; anchors.horizontalCenter: parent.horizontalCenter }
+            }
+            MouseArea { anchors.fill: parent; onClicked: { if (backend.useRtsp2 && backend.rtspUrl2.length > 0) backend.reconnectRtsp2() } }
+        }
+
+        // Camera 3
+        MediaPlayer {
+            id: rtspPlayer3; autoPlay: false
+            onErrorChanged: { if (error !== MediaPlayer.NoError) backend.onRtsp3Error(errorString) }
+            onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp3Playing() }
+        }
+        VideoOutput { anchors.fill: parent; source: rtspPlayer3; visible: (backend.rtsp3State || 0) === 2 && rtspPlayer3.playbackState === MediaPlayer.PlayingState }
+        Rectangle {
+            id: connectingOverlay3; anchors.fill: parent; color: "black"; visible: false; z: 1; opacity: 0
+            Behavior on opacity { NumberAnimation { duration: 300 } }
+            onVisibleChanged: { if (visible) opacity = 1; else opacity = 0 }
+            Column { anchors.centerIn: parent; spacing: 16
+                Item { width: 80; height: 80; anchors.horizontalCenter: parent.horizontalCenter
+                    Rectangle { width: 80; height: 80; radius: 40; color: "transparent"; border.color: (backend.rtsp3State || 0) === 3 ? "#f55" : "#5af"; border.width: 3; anchors.centerIn: parent
+                        SequentialAnimation on scale { running: connectingOverlay3.visible; loops: Animation.Infinite
+                            NumberAnimation { from: 0.8; to: 1.3; duration: 1200; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 1.3; to: 0.8; duration: 1200; easing.type: Easing.InOutQuad }
+                        }
+                    }
+                    Image { width: 28; height: 28; anchors.centerIn: parent; source: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235af'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E" }
+                }
+                Text { text: (backend.rtsp3State || 0) === 3 ? backend.rtsp3ErrorMsg : "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435..."; color: "white"; font.pixelSize: 20; anchors.horizontalCenter: parent.horizontalCenter }
+            }
+            MouseArea { anchors.fill: parent; onClicked: { if (backend.useRtsp3 && backend.rtspUrl3.length > 0) backend.reconnectRtsp3() } }
+        }
+
     }
 
     property int settingsTab: 0
@@ -257,19 +323,19 @@ ApplicationWindow {
                     Text { text: "\u0421\u0435\u0440\u0432\u0435\u0440:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: srvField; text: backend.server; onTextChanged: backend.server = text; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: srvField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u041f\u0430\u043f\u043a\u0430:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: shrField; text: backend.share; onTextChanged: backend.share = text; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: shrField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u041b\u043e\u0433\u0438\u043d:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: usrField; text: backend.user; onTextChanged: backend.user = text; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: usrField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u041f\u0430\u0440\u043e\u043b\u044c:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: pswField; text: backend.pass; onTextChanged: backend.pass = text; echoMode: TextInput.Password; enabled: !guestChk.checked; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: guestChk.checked ? "#111" : "#222"; border.color: pswField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 12; width: parent.width; topPadding: 8
+                Row { spacing: 12; width: parent.width
                     CheckBox {
                         id: guestChk
                         text: "\u0413\u043e\u0441\u0442\u0435\u0432\u043e\u0439 \u0434\u043e\u0441\u0442\u0443\u043f"
@@ -279,7 +345,7 @@ ApplicationWindow {
                         indicator: Rectangle { width: 24; height: 24; radius: 6; color: guestChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0421\u043c\u0431 (\u0432\u0435\u0440\u0441\u0438\u044f):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     ComboBox {
                         id: smbCombo
@@ -296,7 +362,7 @@ ApplicationWindow {
                         }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     SpinBox {
                         id: intervalSpin
@@ -315,7 +381,7 @@ ApplicationWindow {
                         }
                     }
                 }
-                Row { spacing: 12; width: parent.width; topPadding: 8
+                Row { spacing: 12; width: parent.width
                     CheckBox {
                         id: shuffleChk
                         text: "\u0421\u043b\u0443\u0447\u0430\u0439\u043d\u044b\u0439 \u043f\u043e\u0440\u044f\u0434\u043e\u043a"
@@ -347,11 +413,11 @@ ApplicationWindow {
                         indicator: Rectangle { width: 24; height: 24; radius: 6; color: schedChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u041f\u0440\u043e\u0431\u0443\u0436\u0434\u0435\u043d\u0438\u0435:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: wakeField; text: backend.wakeTime; onEditingFinished: backend.wakeTime = text; width: 120; color: "white"; font.pixelSize: 20; padding: 10; inputMethodHints: Qt.ImhTime; background: Rectangle { radius: 8; color: "#222"; border.color: "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0421\u043d:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: sleepField; text: backend.sleepTime; onEditingFinished: backend.sleepTime = text; width: 120; color: "white"; font.pixelSize: 20; padding: 10; inputMethodHints: Qt.ImhTime; background: Rectangle { radius: 8; color: "#222"; border.color: "#555" } }
                 }
@@ -377,9 +443,58 @@ ApplicationWindow {
                         indicator: Rectangle { width: 24; height: 24; radius: 6; color: rtspChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "URL:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: rtspField; text: backend.rtspUrl; onTextChanged: backend.rtspUrl = text; placeholderText: "rtsp://user:pass@ip:port/stream"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: rtspField.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width
+                    Text { text: "\u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043a\u0430\u0437\u0430 (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    SpinBox { id: camDurSpin; from: 1; to: 3600; value: backend.cameraDuration; onValueModified: backend.cameraDuration = value; width: 200
+                        background: Rectangle { radius: 8; color: "#222"; border.color: "#555" }
+                        contentItem: TextInput { text: camDurSpin.value; color: "white"; font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
+                }
+
+                Rectangle { width: parent.width; height: 1; color: "#333" }
+                Text { text: "\u041a\u0430\u043c\u0435\u0440\u0430 2"; color: "#aaa"; font.pixelSize: 20; font.bold: true }
+
+                Row { spacing: 12; width: parent.width
+                    CheckBox { id: rtspChk2; text: "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0432\u0438\u0434\u0435\u043e \u0441 \u043a\u0430\u043c\u0435\u0440\u044b 2"; checked: backend.useRtsp2; onCheckedChanged: backend.useRtsp2 = checked
+                        contentItem: Text { text: rtspChk2.text; color: "white"; font.pixelSize: 20; leftPadding: rtspChk2.indicator.width + 8; verticalAlignment: Text.AlignVCenter }
+                        indicator: Rectangle { width: 24; height: 24; radius: 6; color: rtspChk2.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                Row { spacing: 16; width: parent.width
+                    Text { text: "URL:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: rtspField2; text: backend.rtspUrl2; onTextChanged: backend.rtspUrl2 = text; placeholderText: "rtsp://..."; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: rtspField2.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width
+                    Text { text: "\u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043a\u0430\u0437\u0430 (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    SpinBox { id: cam2DurSpin; from: 1; to: 3600; value: backend.camera2Duration; onValueModified: backend.camera2Duration = value; width: 200
+                        background: Rectangle { radius: 8; color: "#222"; border.color: "#555" }
+                        contentItem: TextInput { text: cam2DurSpin.value; color: "white"; font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
+                }
+
+                Rectangle { width: parent.width; height: 1; color: "#333" }
+                Text { text: "\u041a\u0430\u043c\u0435\u0440\u0430 3"; color: "#aaa"; font.pixelSize: 20; font.bold: true }
+
+                Row { spacing: 12; width: parent.width
+                    CheckBox { id: rtspChk3; text: "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0432\u0438\u0434\u0435\u043e \u0441 \u043a\u0430\u043c\u0435\u0440\u044b 3"; checked: backend.useRtsp3; onCheckedChanged: backend.useRtsp3 = checked
+                        contentItem: Text { text: rtspChk3.text; color: "white"; font.pixelSize: 20; leftPadding: rtspChk3.indicator.width + 8; verticalAlignment: Text.AlignVCenter }
+                        indicator: Rectangle { width: 24; height: 24; radius: 6; color: rtspChk3.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                Row { spacing: 16; width: parent.width
+                    Text { text: "URL:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: rtspField3; text: backend.rtspUrl3; onTextChanged: backend.rtspUrl3 = text; placeholderText: "rtsp://..."; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: rtspField3.activeFocus ? "#aaa" : "#555" } }
+                }
+                Row { spacing: 16; width: parent.width
+                    Text { text: "\u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043a\u0430\u0437\u0430 (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
+                    SpinBox { id: cam3DurSpin; from: 1; to: 3600; value: backend.camera3Duration; onValueModified: backend.camera3Duration = value; width: 200
+                        background: Rectangle { radius: 8; color: "#222"; border.color: "#555" }
+                        contentItem: TextInput { text: cam3DurSpin.value; color: "white"; font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
                 }
 
                 }
@@ -403,15 +518,15 @@ ApplicationWindow {
                         indicator: Rectangle { width: 24; height: 24; radius: 6; color: snChk.checked ? "#5a5" : "#222"; border.color: "#888"; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0421\u0435\u0440\u0432\u0435\u0440:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snSrvField; text: backend.signalNetServer; onTextChanged: backend.signalNetServer = text; placeholderText: "192.168.1.1"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snSrvField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u041f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snPortField; text: backend.signalNetPort; onTextChanged: backend.signalNetPort = parseInt(text) || 8888; placeholderText: "8888"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snPortField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0422\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     ComboBox {
                         id: snTransportCombo
@@ -428,23 +543,23 @@ ApplicationWindow {
                         }
                     }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8; visible: !backend.signalNetUseUdp
+                Row { spacing: 16; width: parent.width; visible: !backend.signalNetUseUdp
                     Text { text: "\u041b\u043e\u0433\u0438\u043d:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snLoginField; text: backend.signalNetLogin; onTextChanged: backend.signalNetLogin = text; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snLoginField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8; visible: !backend.signalNetUseUdp
+                Row { spacing: 16; width: parent.width; visible: !backend.signalNetUseUdp
                     Text { text: "\u041f\u0430\u0440\u043e\u043b\u044c:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snPassField; text: backend.signalNetPass; onTextChanged: backend.signalNetPass = text; echoMode: TextInput.Password; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snPassField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8; visible: backend.signalNetUseUdp
+                Row { spacing: 16; width: parent.width; visible: backend.signalNetUseUdp
                     Text { text: "\u041b\u043e\u043a. \u043f\u043e\u0440\u0442:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snUdpLocalPortField; text: backend.signalNetUdpLocalPort; onTextChanged: backend.signalNetUdpLocalPort = parseInt(text) || 29545; placeholderText: "29545"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snUdpLocalPortField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 16; width: parent.width; topPadding: 8; visible: backend.signalNetUseUdp
+                Row { spacing: 16; width: parent.width; visible: backend.signalNetUseUdp
                     Text { text: "\u041a\u043b\u044e\u0447:"; color: "white"; font.pixelSize: 20; width: 160; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: snUdpKeyField; text: backend.signalNetUdpKey; onTextChanged: backend.signalNetUdpKey = text; placeholderText: "signalnet"; width: parent.width - 176; color: "white"; font.pixelSize: 20; padding: 10; background: Rectangle { radius: 8; color: "#222"; border.color: snUdpKeyField.activeFocus ? "#aaa" : "#555" } }
                 }
-                Row { spacing: 12; width: parent.width; topPadding: 8
+                Row { spacing: 12; width: parent.width
                     Rectangle { width: 120; height: 40; radius: 8; color: snConnectMa.pressed ? "#555" : (backend.signalNetConnected ? "#5a5" : "#222"); border.color: "#888"; border.width: 1
                         Text { text: backend.signalNetConnected ? "\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c" : "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c"; color: "white"; font.pixelSize: 16; anchors.centerIn: parent }
                         MouseArea { id: snConnectMa; anchors.fill: parent; onClicked: {
@@ -455,8 +570,8 @@ ApplicationWindow {
                     Text { text: backend.signalNetConnected ? "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e" : "\u041e\u0442\u043a\u043b\u044e\u0447\u0435\u043d\u043e"; color: backend.signalNetConnected ? "#5a5" : "#f55"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                Text { text: "\u041a\u0430\u043c\u0435\u0440\u0430"; color: "#aaa"; font.pixelSize: 22; font.bold: true; topPadding: 20; bottomPadding: 8 }
-                Row { spacing: 16; width: parent.width; topPadding: 8
+                Text { text: "\u041a\u0430\u043c\u0435\u0440\u0430"; color: "#aaa"; font.pixelSize: 22; font.bold: true; bottomPadding: 8 }
+                Row { spacing: 16; width: parent.width
                     Text { text: "\u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043a\u0430\u0437\u0430 (\u0441\u0435\u043a):"; color: "white"; font.pixelSize: 20; width: 200; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: camDurField
                         text: backend.cameraDuration
@@ -555,11 +670,31 @@ ApplicationWindow {
                 Text { text: backend.currentDate; color: "white"; font.pixelSize: 22; font.bold: true; font.family: "Consolas, monospace"; anchors.fill: parent; leftPadding: 10; rightPadding: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 MouseArea { id: dma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 3 ? 0 : 3 } }
             Rectangle { width: 56; height: 56; radius: 14; color: (backend.rtspState || 0) === 2 ? "#4dffffff" : (vma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
-                Text { text: "\u25b6"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
+                Image { width: 28; height: 28; anchors.centerIn: parent; source: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E" }
                 MouseArea { id: vma; anchors.fill: parent; onClicked: {
                     if ((backend.rtspState || 0) !== 0) { backend.stopRtsp() }
                     else { backend.pageIndex = 0; if (backend.useRtsp && backend.rtspUrl.length > 0) backend.reconnectRtsp() }
                 } } }
+            Rectangle { visible: backend.useRtsp2; width: 56; height: 56; radius: 14; color: (backend.rtsp2State || 0) === 2 ? "#4dffffff" : (v2ma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
+                Image { width: 28; height: 28; anchors.centerIn: parent; source: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E" }
+                Text { text: "2"; color: "#5af"; font.pixelSize: 10; font.bold: true; anchors.right: parent.right; anchors.top: parent.top; anchors.rightMargin: 2; anchors.topMargin: 1 }
+                MouseArea { id: v2ma; anchors.fill: parent; onClicked: {
+                    if ((backend.rtsp2State || 0) !== 0) { backend.stopRtsp2() }
+                    else { backend.pageIndex = 0; if (backend.useRtsp2 && backend.rtspUrl2.length > 0) backend.reconnectRtsp2() }
+                } } }
+            Rectangle { visible: backend.useRtsp3; width: 56; height: 56; radius: 14; color: (backend.rtsp3State || 0) === 2 ? "#4dffffff" : (v3ma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
+                Image { width: 28; height: 28; anchors.centerIn: parent; source: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E" }
+                Text { text: "3"; color: "#5af"; font.pixelSize: 10; font.bold: true; anchors.right: parent.right; anchors.top: parent.top; anchors.rightMargin: 2; anchors.topMargin: 1 }
+                MouseArea { id: v3ma; anchors.fill: parent; onClicked: {
+                    if ((backend.rtsp3State || 0) !== 0) { backend.stopRtsp3() }
+                    else { backend.pageIndex = 0; if (backend.useRtsp3 && backend.rtspUrl3.length > 0) backend.reconnectRtsp3() }
+                } } }
+            Rectangle { visible: backend.signalNetConnected; width: 56; height: 56; radius: 14; color: a1ma.pressed ? "#555" : "#4d000000"; border.color: "#fa0"; border.width: 1
+                Text { text: "A1"; color: "#fa0"; font.pixelSize: 18; font.bold: true; anchors.centerIn: parent }
+                MouseArea { id: a1ma; anchors.fill: parent; onClicked: backend.sendAction1() } }
+            Rectangle { visible: backend.signalNetConnected; width: 56; height: 56; radius: 14; color: a2ma.pressed ? "#555" : "#4d000000"; border.color: "#fa0"; border.width: 1
+                Text { text: "A2"; color: "#fa0"; font.pixelSize: 18; font.bold: true; anchors.centerIn: parent }
+                MouseArea { id: a2ma; anchors.fill: parent; onClicked: backend.sendAction2() } }
             Rectangle { width: 56; height: 56; radius: 14; color: backend.pageIndex === 1 ? "#4dffffff" : (sma.pressed ? "#555" : "#4d000000"); border.color: "white"; border.width: 1
                 Text { text: "\u2261"; color: "white"; font.pixelSize: 28; font.bold: true; anchors.centerIn: parent }
                 MouseArea { id: sma; anchors.fill: parent; onClicked: backend.pageIndex = backend.pageIndex === 1 ? 0 : 1 } }
@@ -600,85 +735,117 @@ ApplicationWindow {
 
     Rectangle { id: sleepOverlay; anchors.fill: parent; color: "black"; visible: false; z: 50 }
 
-    // Temperature — top right corner
+    // Indoor temperature — top right
     Text {
         visible: backend.useSignalNet && backend.signalNetConnected && backend.signalNetTemperatureValid
         anchors.top: parent.top; anchors.right: parent.right
         anchors.topMargin: 20; anchors.rightMargin: 24
         z: 20
-        text: backend.signalNetTemperature.toFixed(1) + "\u00b0C"
-        color: "white"
-        font.pixelSize: 48
-        font.bold: true
+        property bool tempWarn: backend.signalNetTemperature < 18 || backend.signalNetTemperature > 24
+        text: (tempWarn ? "\u26a0 " : "") + backend.signalNetTemperature.toFixed(1) + "\u00b0C"
+        color: tempWarn ? "#f55" : "white"
+        font.pixelSize: 48; font.bold: true
         font.family: "Consolas, monospace"
-        style: Text.Outline
-        styleColor: "#44000000"
+        style: Text.Outline; styleColor: "#44000000"
     }
 
-    // SignalNet Alert Overlay
+    // Outdoor temperature
+    Text {
+        visible: backend.useSignalNet && backend.signalNetConnected && backend.signalNetTemperatureOutValid
+        anchors.top: parent.top; anchors.right: parent.right
+        anchors.topMargin: 80; anchors.rightMargin: 24
+        z: 20
+        text: backend.signalNetTemperatureOut.toFixed(1) + "\u00b0C"
+        color: "#aaf"
+        font.pixelSize: 64; font.bold: true
+        font.family: "Consolas, monospace"
+        style: Text.Outline; styleColor: "#44000000"
+    }
+
+    // Sensor indicators
+    Column {
+        visible: backend.useSignalNet && backend.signalNetConnected
+        anchors.top: parent.top; anchors.right: parent.right
+        anchors.topMargin: 160; anchors.rightMargin: 24
+        z: 20; spacing: 6
+        Text {
+            visible: backend.signalNetHumidityValid
+            property bool warn: backend.signalNetHumidity < 30 || backend.signalNetHumidity > 60
+            text: (warn ? "\u26a0 " : "") + backend.signalNetHumidity.toFixed(0) + "%"
+            color: warn ? "#f55" : "#5cf"
+            font.pixelSize: 36; font.bold: true; font.family: "Consolas, monospace"
+            style: Text.Outline; styleColor: "#44000000"
+            horizontalAlignment: Text.AlignRight; width: parent.width
+        }
+        Text {
+            visible: backend.signalNetCo2Valid
+            property bool warn: backend.signalNetCo2 >= 1000
+            text: (warn ? "\u26a0 " : "") + backend.signalNetCo2 + " ppm"
+            color: warn ? "#f55" : "#fa3"
+            font.pixelSize: 36; font.bold: true; font.family: "Consolas, monospace"
+            style: Text.Outline; styleColor: "#44000000"
+            horizontalAlignment: Text.AlignRight; width: parent.width
+        }
+        Text {
+            visible: backend.signalNetDustValid
+            property bool warn: backend.signalNetDust >= 25
+            text: (warn ? "\u26a0 " : "") + backend.signalNetDust + " \u03bcg/m\u00b3"
+            color: warn ? "#f55" : "#f77"
+            font.pixelSize: 36; font.bold: true; font.family: "Consolas, monospace"
+            style: Text.Outline; styleColor: "#44000000"
+            horizontalAlignment: Text.AlignRight; width: parent.width
+        }
+        Text {
+            visible: backend.signalNetVarValid
+            text: backend.signalNetVar.toFixed(1)
+            color: "#aaa"
+            font.pixelSize: 36; font.bold: true; font.family: "Consolas, monospace"
+            style: Text.Outline; styleColor: "#44000000"
+            horizontalAlignment: Text.AlignRight; width: parent.width
+        }
+    }
+
+    // SignalNet Alert Banner
     Rectangle {
-        id: snAlertOverlay
-        anchors.fill: parent
-        visible: backend.signalNetAlert.length > 0
-        z: 55
+        id: snAlertBanner
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top; anchors.topMargin: 20
+        width: Math.min(parent.width - 60, 500); height: 72; radius: 36
+        visible: false; z: 55
         property int alertSeverity: backend.signalNetAlertSeverity
-        property color bgColor: alertSeverity >= 2 ? "#ee000000" : (alertSeverity === 1 ? "#ee330000" : "#ee000033")
-        color: bgColor
-
-        // Flashing border
-        Rectangle {
-            anchors.fill: parent
-            color: "transparent"
-            border.color: snAlertOverlay.alertSeverity >= 2 ? "#f00" : (snAlertOverlay.alertSeverity === 1 ? "#fa0" : "#5af")
-            border.width: 4
-            SequentialAnimation on border.width {
-                running: snAlertOverlay.visible
-                loops: Animation.Infinite
-                NumberAnimation { from: 2; to: 8; duration: 400; easing.type: Easing.InOutQuad }
-                NumberAnimation { from: 8; to: 2; duration: 400; easing.type: Easing.InOutQuad }
-            }
-        }
-
-        Column {
-            anchors.centerIn: parent
-            spacing: 20
-            // Pulsing icon
-            Text {
-                id: alertIcon
-                text: snAlertOverlay.alertSeverity >= 2 ? "\u26a0" : (snAlertOverlay.alertSeverity === 1 ? "\u26a0" : "\u2139")
-                color: snAlertOverlay.alertSeverity >= 2 ? "#f00" : (snAlertOverlay.alertSeverity === 1 ? "#fa0" : "#5af")
-                font.pixelSize: 80
-                anchors.horizontalCenter: parent.horizontalCenter
+        property color accentColor: alertSeverity >= 2 ? "#e53935" : (alertSeverity === 1 ? "#fb8c00" : "#42a5f5")
+        color: Qt.rgba(0.1, 0.1, 0.1, 0.92)
+        border.color: accentColor; border.width: 2
+        opacity: 0; y: -80
+        onVisibleChanged: { if (visible) { slideIn.start(); autoHide.restart() } }
+        NumberAnimation on y { id: slideIn; from: -80; to: 20; duration: 300; easing.type: Easing.OutCubic
+            onRunningChanged: { if (!running && snAlertBanner.visible) snAlertBanner.opacity = 1.0 } }
+        NumberAnimation on y { id: slideOut; from: 20; to: -80; duration: 250; easing.type: Easing.InCubic
+            onRunningChanged: { if (!running) snAlertBanner.visible = false } }
+        NumberAnimation on opacity { id: fadeIn; from: 0; to: 1; duration: 300 }
+        NumberAnimation on opacity { id: fadeOut; from: 1; to: 0; duration: 250 }
+        Row {
+            anchors.centerIn: parent; spacing: 14
+            Rectangle {
+                width: 40; height: 40; radius: 20
+                color: snAlertBanner.accentColor; opacity: 0.9
+                anchors.verticalCenter: parent.verticalCenter
                 SequentialAnimation on opacity {
-                    running: snAlertOverlay.visible
+                    running: snAlertBanner.visible && snAlertBanner.alertSeverity > 0
                     loops: Animation.Infinite
-                    NumberAnimation { from: 1.0; to: 0.3; duration: 500; easing.type: Easing.InOutQuad }
-                    NumberAnimation { from: 0.3; to: 1.0; duration: 500; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 0.9; to: 0.4; duration: 600; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 0.4; to: 0.9; duration: 600; easing.type: Easing.InOutQuad }
                 }
+                Text { text: snAlertBanner.alertSeverity >= 2 ? "\u26a0" : (snAlertBanner.alertSeverity === 1 ? "\u26a0" : "\u2139"); color: "white"; font.pixelSize: 22; anchors.centerIn: parent }
             }
-            Text {
-                text: backend.signalNetAlert
-                color: "white"
-                font.pixelSize: 32
-                font.bold: true
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-            Text {
-                text: "SignalNet"
-                color: "#aaa"
-                font.pixelSize: 16
-                anchors.horizontalCenter: parent.horizontalCenter
+            Text { text: backend.signalNetAlert; color: "white"; font.pixelSize: 22; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "\u00d7"; color: "#aaa"; font.pixelSize: 24; anchors.verticalCenter: parent.verticalCenter
+                MouseArea { anchors.fill: parent; onClicked: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
             }
         }
-        MouseArea {
-            anchors.fill: parent
-            onClicked: backend.clearSignalNetAlert()
-        }
-        Timer {
-            interval: 10000
-            running: snAlertOverlay.visible
-            onTriggered: backend.clearSignalNetAlert()
-        }
+        MouseArea { anchors.fill: parent; onClicked: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
+        Timer { id: autoHide; interval: 8000; running: snAlertBanner.visible
+            onTriggered: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
     }
 
     MouseArea { anchors.fill: parent; z: 1; visible: backend.pageIndex === 0 && (backend.rtspState || 0) !== 2; onClicked: backend.nextSlide(); propagateComposedEvents: true }

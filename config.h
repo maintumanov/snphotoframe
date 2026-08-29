@@ -26,11 +26,22 @@ struct SmbConfig {
     quint16 signalNetPort = 8888;
     QString signalNetLogin;
     QString signalNetPass;
+    quint16 signalNetDeviceAddress = 3999;
     quint16 signalNetUdpLocalPort = 29545;
     QString signalNetUdpKey = "signalnet";
 
     // Камера по SignalNet
     int cameraDuration = 30;
+
+    // Камера 2
+    bool useRtsp2 = false;
+    QString rtspUrl2;
+    int camera2Duration = 30;
+
+    // Камера 3
+    bool useRtsp3 = false;
+    QString rtspUrl3;
+    int camera3Duration = 30;
 
     void load(const QString& fileName = "photoframe.ini");
     void save(const QString& fileName = "photoframe.ini") const;

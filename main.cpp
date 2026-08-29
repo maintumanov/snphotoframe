@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 #endif
     QGuiApplication app(argc, argv);
     app.setApplicationName("DigitalPhotoFrame");
-    app.setApplicationVersion("1.0");
+    app.setApplicationVersion("1.0.0.5");
     qInfo() << "Application started";
 
     PhotoFrameBackend backend;

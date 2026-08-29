@@ -24,9 +24,18 @@ void SmbConfig::load(const QString& fileName) {
     signalNetPort = static_cast<quint16>(s.value("signalnet/port", 8888).toUInt());
     signalNetLogin = s.value("signalnet/login").toString();
     signalNetPass = s.value("signalnet/pass").toString();
+    signalNetDeviceAddress = static_cast<quint16>(s.value("signalnet/deviceaddress", 3999).toUInt());
     signalNetUdpLocalPort = static_cast<quint16>(s.value("signalnet/udplocalport", 29545).toUInt());
     signalNetUdpKey = s.value("signalnet/udpkey", "signalnet").toString();
     cameraDuration = s.value("signalnet/cameraduration", 30).toInt();
+
+    useRtsp2 = s.value("rtsp2/enable", false).toBool();
+    rtspUrl2 = s.value("rtsp2/url").toString();
+    camera2Duration = s.value("rtsp2/cameraduration", 30).toInt();
+
+    useRtsp3 = s.value("rtsp3/enable", false).toBool();
+    rtspUrl3 = s.value("rtsp3/url").toString();
+    camera3Duration = s.value("rtsp3/cameraduration", 30).toInt();
 }
 
 void SmbConfig::save(const QString& fileName) const {
@@ -53,7 +62,16 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("signalnet/port", signalNetPort);
     s.setValue("signalnet/login", signalNetLogin);
     s.setValue("signalnet/pass", signalNetPass);
+    s.setValue("signalnet/deviceaddress", signalNetDeviceAddress);
     s.setValue("signalnet/udplocalport", signalNetUdpLocalPort);
     s.setValue("signalnet/udpkey", signalNetUdpKey);
     s.setValue("signalnet/cameraduration", cameraDuration);
+
+    s.setValue("rtsp2/enable", useRtsp2);
+    s.setValue("rtsp2/url", rtspUrl2);
+    s.setValue("rtsp2/cameraduration", camera2Duration);
+
+    s.setValue("rtsp3/enable", useRtsp3);
+    s.setValue("rtsp3/url", rtspUrl3);
+    s.setValue("rtsp3/cameraduration", camera3Duration);
 }

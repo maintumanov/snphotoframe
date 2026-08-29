@@ -40,18 +40,21 @@ SignalNet::SignalNet(QObject *parent)
     connect(m_interface, &QsnInterface::eventNumInput,
             this, &SignalNet::onEventNumInput);
 
+
+
     // Pulse request handler (Command=2 from QsnInterface::secondOut timer)
     connect(m_interface, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
             this, SLOT(onSnBUSInput(QSNContainer,QObject*)));
 
+
+    connect(m_interface, SIGNAL(eventAddressChange()), this, SLOT(saveSettings()));
+
     // Configure interface for digital photo frame device
-    m_interface->actionSetAddress(m_deviceAddress);
     m_interface->setMemorySize(MemoryBlocks);
     m_interface->setIOcount(IO_count);
     m_interface->setDeviceTypeIndex(DeviceType);
-    m_interface->setMemoryFileName(
-        QSNHomePath("photoframe").absoluteFilePath("digitalphotoframe.idm"));
-
+    m_interface->setMemoryFileName(QSNHomePath("photoframe").absoluteFilePath("digitalphotoframe.idm"));
+    loadSettings();
     // Reconnect timer (like snpcagent connectTimer)
     m_reconnectTimer = new QTimer(this);
     m_reconnectTimer->setSingleShot(true);
@@ -66,6 +69,26 @@ SignalNet::SignalNet(QObject *parent)
         if (m_lastTemperatureTime.isValid() && !isTemperatureValid()) {
             m_lastTemperatureTime = QDateTime(); // invalidate
             emit temperatureValidChanged();
+        }
+        if (m_lastTemperatureOutTime.isValid() && !isTemperatureOutValid()) {
+            m_lastTemperatureOutTime = QDateTime(); // invalidate
+            emit temperatureOutValidChanged();
+        }
+        if (m_lastHumidityTime.isValid() && !isHumidityValid()) {
+            m_lastHumidityTime = QDateTime();
+            emit humidityValidChanged();
+        }
+        if (m_lastCo2Time.isValid() && !isCo2Valid()) {
+            m_lastCo2Time = QDateTime();
+            emit co2ValidChanged();
+        }
+        if (m_lastDustTime.isValid() && !isDustValid()) {
+            m_lastDustTime = QDateTime();
+            emit dustValidChanged();
+        }
+        if (m_lastVarTime.isValid() && !isVarValid()) {
+            m_lastVarTime = QDateTime();
+            emit varValidChanged();
         }
     });
     staleTimer->start(60000);
@@ -86,6 +109,31 @@ bool SignalNet::useUdp() const { return m_useUdp; }
 bool SignalNet::isTemperatureValid() const {
     return m_lastTemperatureTime.isValid() &&
            m_lastTemperatureTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
+qreal SignalNet::temperatureOut() const { return m_temperatureOut; }
+bool SignalNet::isTemperatureOutValid() const {
+    return m_lastTemperatureOutTime.isValid() &&
+           m_lastTemperatureOutTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
+qreal SignalNet::humidity() const { return m_humidity; }
+bool SignalNet::isHumidityValid() const {
+    return m_lastHumidityTime.isValid() &&
+           m_lastHumidityTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
+int SignalNet::co2() const { return m_co2; }
+bool SignalNet::isCo2Valid() const {
+    return m_lastCo2Time.isValid() &&
+           m_lastCo2Time.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
+int SignalNet::dust() const { return m_dust; }
+bool SignalNet::isDustValid() const {
+    return m_lastDustTime.isValid() &&
+           m_lastDustTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+}
+qreal SignalNet::var() const { return m_var; }
+bool SignalNet::isVarValid() const {
+    return m_lastVarTime.isValid() &&
+           m_lastVarTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
 }
 
 void SignalNet::setupTransport()
@@ -172,6 +220,20 @@ void SignalNet::clearAlert()
     }
 }
 
+void SignalNet::sendAction1()
+{
+    if (!m_connected) return;
+    qInfo() << "SignalNet: action1 triggered";
+    m_interface->actionNumOutput(SnOutputAction1);
+}
+
+void SignalNet::sendAction2()
+{
+    if (!m_connected) return;
+    qInfo() << "SignalNet: action2 triggered";
+    m_interface->actionNumOutput(SnOutputAction2);
+}
+
 void SignalNet::onEventConnect()
 {
     qInfo() << "SignalNet: connected and authorized via"
@@ -227,6 +289,22 @@ void SignalNet::checkReconnect()
     m_interface->actionConnect();
 }
 
+void SignalNet::saveSettings()
+{
+    QString snPath = QSNHomePath("photoframe").absoluteFilePath("photoframe.ini");
+    QSettings settings(snPath, QSettings::IniFormat);
+    qInfo() << "save addr " << m_interface->getDeviceAddress() << snPath;
+    m_interface->saveSettings(&settings);
+}
+
+void SignalNet::loadSettings()
+{
+    QString snPath = QSNHomePath("photoframe").absoluteFilePath("photoframe.ini");
+    QSettings settings(snPath, QSettings::IniFormat);
+    qInfo() << "load addr " << m_interface->getDeviceAddress() << snPath;
+    m_interface->loadSettings(&settings);
+}
+
 void SignalNet::onSnBUSInput(QSNContainer container, QObject *sender)
 {
     Q_UNUSED(sender);
@@ -242,6 +320,18 @@ void SignalNet::onSnBUSInput(QSNContainer container, QObject *sender)
 void SignalNet::onEventNumInput(int numInput, QByteArray data)
 {
     switch (numInput) {
+    case input_temp_out: {
+        qreal temp = QSNRAWtoTemperature(&data, 1);
+        bool wasValid = isTemperatureOutValid();
+        m_lastTemperatureOutTime = QDateTime::currentDateTime();
+        if (m_temperatureOut != temp) {
+            m_temperatureOut = temp;
+            emit temperatureOutChanged();
+            qInfo() << "SignalNet: outdoor temperature =" << temp << "\u00b0C";
+        }
+        if (!wasValid) emit temperatureOutValidChanged();
+        break;
+    }
     case input_temperature: {
         qreal temp = QSNRAWtoTemperature(&data, 1);
         bool wasValid = isTemperatureValid();
@@ -323,9 +413,52 @@ void SignalNet::onEventNumInput(int numInput, QByteArray data)
         emit navLeft();
         break;
     }
-    case input_camera: {
-        qInfo() << "SignalNet: camera on";
-        emit cameraOn();
+    case input_hym: {
+        qreal hum = QSNRAWtoHumidity(&data, 1);
+        bool wasValid = isHumidityValid();
+        m_lastHumidityTime = QDateTime::currentDateTime();
+        if (m_humidity != hum) {
+            m_humidity = hum;
+            emit humidityChanged();
+            qInfo() << "SignalNet: humidity =" << hum << "%";
+        }
+        if (!wasValid) emit humidityValidChanged();
+        break;
+    }
+    case input_co2: {
+        int val = static_cast<int>(QSNRAWtoUInt16(&data, 1));
+        bool wasValid = isCo2Valid();
+        m_lastCo2Time = QDateTime::currentDateTime();
+        if (m_co2 != val) {
+            m_co2 = val;
+            emit co2Changed();
+            qInfo() << "SignalNet: CO2 =" << val << "ppm";
+        }
+        if (!wasValid) emit co2ValidChanged();
+        break;
+    }
+    case input_dust: {
+        int val = static_cast<int>(QSNRAWtoUInt16(&data, 1));
+        bool wasValid = isDustValid();
+        m_lastDustTime = QDateTime::currentDateTime();
+        if (m_dust != val) {
+            m_dust = val;
+            emit dustChanged();
+            qInfo() << "SignalNet: dust =" << val;
+        }
+        if (!wasValid) emit dustValidChanged();
+        break;
+    }
+    case input_var: {
+        qreal val = QSNRAWtoUInt16(&data, 1);
+        bool wasValid = isVarValid();
+        m_lastVarTime = QDateTime::currentDateTime();
+        if (m_var != val) {
+            m_var = val;
+            emit varChanged();
+            qInfo() << "SignalNet: var =" << val;
+        }
+        if (!wasValid) emit varValidChanged();
         break;
     }
     case input_statusAbsence: {
