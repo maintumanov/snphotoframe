@@ -1,5 +1,31 @@
-Nothing should be ignored based on the provided file changes. The only modified file is 'rtspviewer.cpp', which is a source code file and should not be added to .gitignore.
-/*.Debug
-/*.Release
+# Build outputs
+*.Debug
+*.Release
 /debug
 /release
+Makefile
+Makefile.*
+.qmake.stash
+
+# Qt Creator user settings
+*.pro.user
+*.pro.user.*
+
+# Build artifacts
+*.o
+*.obj
+*.moc
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+
+# Python
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~

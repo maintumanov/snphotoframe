@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PatternContainer>
+    <general DeviceIndex="1002" Name="Цифровая фоторамка" DeviceMemoryBlocks="64" DeviceVersion="1.0.0.0"/>
+    <inputs>
+        <input Name="Отсутствие" DataTypeIndex="0" Define="statusAbsence">
+            <CS>3</CS>
+        </input>
+        <input Name="Присутствие" DataTypeIndex="0" Define="statusNoAbsence">
+            <CS>2</CS>
+        </input>
+        <input Name="Оповещение" DataTypeIndex="14" Define="alert">
+            <CS>9</CS>
+        </input>
+        <input Name="Сигнализация" DataTypeIndex="31" Define="alarm">
+            <CS>11</CS>
+        </input>
+        <input Name="Звонок" DataTypeIndex="0" Define="bell">
+            <CS>12</CS>
+        </input>
+        <input Name="Температура наружняя" DataTypeIndex="9" Define="temp_out"/>
+        <input Name="Температура" DataTypeIndex="9" Define="temperature"/>
+        <input Name="Влажность" DataTypeIndex="20" Define="hym"/>
+        <input Name="CO2" DataTypeIndex="2" Define="co2"/>
+        <input Name="Пыль" DataTypeIndex="37" Define="dust"/>
+        <input Name="Индикатор" DataTypeIndex="63" Define="var"/>
+        <input Name="Пауза" DataTypeIndex="0" Define="pause"/>
+        <input Name="Играть/Пауза" DataTypeIndex="0" Define="playstop"/>
+        <input Name="Следующий" DataTypeIndex="0" Define="next"/>
+        <input Name="Предыдущий" DataTypeIndex="0" Define="previous"/>
+        <input Name="Вправо" DataTypeIndex="0" Define="right"/>
+        <input Name="Влево" DataTypeIndex="0" Define="left"/>
+    </inputs>
+    <outputs>
+        <output Name="Настройка термостата" DataTypeIndex="9" Define="temperatureSetting"/>
+        <output Name="Пульс" DataTypeIndex="0" Define="pulse"/>
+        <output Name="Действие 1" DataTypeIndex="0" Define="action1"/>
+        <output Name="Действие 2" DataTypeIndex="0" Define="action2"/>
+    </outputs>
+    <property>
+        <group Name="Разное" Define="sundry">
+            <bool Name="Темные иконки" DefaultValue="0" Define="darkIcon"/>
+        </group>
+    </property>
+    <debug/>
+</PatternContainer>
