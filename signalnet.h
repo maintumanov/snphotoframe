@@ -115,6 +115,7 @@ public:
     Q_INVOKABLE void setTransport(bool useUdp);
     Q_INVOKABLE void sendAction1();
     Q_INVOKABLE void sendAction2();
+    Q_INVOKABLE void setDeviceAddress(int address);
 
 signals:
     void connectedChanged();

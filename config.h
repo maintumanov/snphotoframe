@@ -8,7 +8,7 @@
 struct SmbConfig {
     QString server, share, user, pass, smbVers = "3.0";
     bool useGuest = true, shuffle = true;
-    int interval = 5000;
+    int interval = 60000;
 
     // Параметры расписания
     bool useSchedule = false;
@@ -20,6 +20,7 @@ struct SmbConfig {
     QString rtspUrl;
 
     // SignalNet интеграция
+    bool useActionButtons = true;
     bool useSignalNet = false;
     bool useUdp = false;
     QString signalNetServer;

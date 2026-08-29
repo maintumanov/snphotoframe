@@ -4,6 +4,7 @@
 #include <QQuickWindow>
 #include <QDebug>
 #include "photoframe.h"
+#include "webserver.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -37,6 +38,10 @@ int main(int argc, char *argv[])
     if (window) {
         window->showFullScreen();
     }
+
+    // Start web configuration server on port 8080
+    WebServer webServer(&backend);
+    webServer.start(8080);
 
     return app.exec();
 }

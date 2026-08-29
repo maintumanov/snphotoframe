@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigitalPhotoFrame</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--accent:#4a9eff;--accent2:#5af;--green:#4caf50;--red:#f44336;--orange:#ff9800;--text:#e0e0e0;--muted:#888;--input-bg:#12141c;--hover:#22263a}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;font-weight:600}.header h1 span{color:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:16px;font-size:12px;font-weight:500}.pill.on{background:rgba(76,175,80,.15);color:var(--green)}.pill.off{background:rgba(244,67,54,.15);color:var(--red)}.pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.container{max-width:860px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:3px;margin-bottom:16px;overflow-x:auto}
+.tab{padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;background:var(--card);border:1px solid var(--border);color:var(--muted);white-space:nowrap;transition:all .15s}.tab:hover{background:var(--hover);color:var(--text)}.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}.card h2{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--accent2)}.card h3{font-size:13px;font-weight:500;margin:12px 0 6px;color:var(--muted)}
+.r{display:flex;align-items:center;gap:10px;margin-bottom:8px;line-height:1}
+.r-l{font-size:13px;color:var(--muted);white-space:nowrap}
+.r-i{flex:1;max-width:360px}
+.r-i input[type=text],.r-i input[type=password],.r-i input[type=number],.r-i select{width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;transition:border .15s}
+.r-i input:focus,.r-i select:focus{border-color:var(--accent)}
+.r-i input[type=number]{max-width:100px}
+.sw{position:relative;width:40px;height:22px;flex-shrink:0}
+.sw input{position:absolute;opacity:0;width:0;height:0}
+.sw label{display:block;width:40px;height:22px;background:#333;border-radius:11px;cursor:pointer;transition:background .2s}
+.sw label::after{content:'';display:block;width:16px;height:16px;background:#666;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform .2s,background .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked+label{background:var(--accent)}
+.sw input:checked+label::after{transform:translateX(18px);background:#fff}
+.divider{height:1px;background:var(--border);margin:12px 0}
+
+/* Status indicators */
+.sg{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sc{background:linear-gradient(135deg,#1e2130 0%,#16182a 100%);border:1px solid #2e3348;border-radius:12px;padding:12px 16px;display:inline-flex;align-items:center;gap:10px;min-width:120px;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:opacity .2s}
+.sc .ico{font-size:24px;line-height:1;width:30px;text-align:center;flex-shrink:0}
+.sc .info{display:flex;flex-direction:column;gap:2px}
+.sc .info .nm{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.sc .info .vl{font-size:16px;font-weight:700;color:var(--accent2);white-space:nowrap;line-height:1.2}
+.sc .info .vl.off{color:#555;font-weight:400;font-size:13px}
+.sc.hide{display:none}
+
+.btn-row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.btn{padding:8px 20px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:#3a8eef}
+.btn-s{background:var(--card);border:1px solid var(--border);color:var(--text)}.btn-s:hover{background:var(--hover)}
+.btn-g{background:var(--green);color:#fff}.btn-g:hover{background:#388e3c}
+.btn-r{background:var(--red);color:#fff}.btn-r:hover{background:#d32f2f}
+.toast{position:fixed;bottom:16px;right:16px;padding:10px 16px;border-radius:6px;color:#fff;font-size:13px;font-weight:500;z-index:200;transform:translateY(80px);opacity:0;transition:all .25s}.toast.show{transform:translateY(0);opacity:1}.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+.tc{display:none}.tc.active{display:block}
+.sn-panel{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px}
+.sn-panel .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sn-panel .row label{font-size:12px;color:var(--muted);min-width:80px}
+.sn-panel .row span{font-size:13px}
+.sn-log{background:#0a0c10;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;font-family:'Consolas',monospace;font-size:11px;color:#999;margin-top:8px}
+.sn-log .ok{color:var(--green)}.sn-log .err{color:var(--red)}.sn-log .info{color:var(--accent)}
+.sn-log .line{margin-bottom:1px}
+@media(max-width:600px){.r{flex-direction:column;align-items:stretch;gap:3px}.r-l{min-width:auto}.r-i{max-width:100%}.sc{min-width:0;flex:1 1 calc(50% - 8px)}.container{padding:10px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📸 <span>Digital</span>PhotoFrame</h1>
+  <div id="hst" class="pill off"><div class="dot"></div><span>Загрузка...</span></div>
+</div>
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" data-t="status">Статус</div>
+    <div class="tab" data-t="smb">Сеть</div>
+    <div class="tab" data-t="rtsp">Камеры</div>
+    <div class="tab" data-t="signalnet">SignalNet</div>
+    <div class="tab" data-t="schedule">Расписание</div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="tc active" id="t-status">
+    <div class="card">
+      <h2>📊 Состояние</h2>
+      <div class="sg" id="statusGrid">
+        <div class="sc" id="sc-time"><div class="ico">🕐</div><div class="info"><span class="nm">Время</span><span class="vl" id="st-time">--:--</span></div></div>
+        <div class="sc" id="sc-date"><div class="ico">📅</div><div class="info"><span class="nm">Дата</span><span class="vl" id="st-date">--</span></div></div>
+        <div class="sc" id="sc-sn"><div class="ico">🔌</div><div class="info"><span class="nm">SignalNet</span><span class="vl" id="st-sn">Откл.</span></div></div>
+        <div class="sc" id="sc-tout"><div class="ico">🌡️</div><div class="info"><span class="nm">Темп. улица</span><span class="vl" id="st-tout">--</span></div></div>
+        <div class="sc" id="sc-temp"><div class="ico">🏠</div><div class="info"><span class="nm">Темп. дома</span><span class="vl" id="st-temp">--</span></div></div>
+        <div class="sc" id="sc-thum"><div class="ico">💧</div><div class="info"><span class="nm">Влажность</span><span class="vl" id="st-thum">--</span></div></div>
+        <div class="sc" id="sc-co2"><div class="ico">🫁</div><div class="info"><span class="nm">CO₂</span><span class="vl" id="st-co2">--</span></div></div>
+        <div class="sc" id="sc-dust"><div class="ico">🌫️</div><div class="info"><span class="nm">Пыль</span><span class="vl" id="st-dust">--</span></div></div>
+        <div class="sc" id="sc-alert"><div class="ico">⚠️</div><div class="info"><span class="nm">Оповещение</span><span class="vl" id="st-alert">Нет</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMB -->
+  <div class="tc" id="t-smb">
+    <div class="card">
+      <h2>🌐 Сеть / SMB</h2>
+      <div class="r"><span class="r-l">Сервер</span><div class="r-i"><input type="text" id="s-server" placeholder="192.168.1.1"></div></div>
+      <div class="r"><span class="r-l">Шара</span><div class="r-i"><input type="text" id="s-share" placeholder="photo"></div></div>
+      <div class="r"><span class="r-l">Логин</span><div class="r-i"><input type="text" id="s-user" placeholder="user"></div></div>
+      <div class="r"><span class="r-l">Пароль</span><div class="r-i"><input type="password" id="s-pass" placeholder="••••"></div></div>
+      <div class="r"><span class="r-l">Гость</span><div class="sw"><input type="checkbox" id="s-guest" checked><label for="s-guest"></label></div></div>
+      <div class="r"><span class="r-l">SMB версия</span><div class="r-i"><select id="s-vers"><option>1.0</option><option>2.0</option><option>2.1</option><option selected>3.0</option><option>3.1.1</option></select></div></div>
+      <div class="divider"></div>
+      <h3>Слайдшоу</h3>
+      <div class="r"><span class="r-l">Интервал (сек)</span><div class="r-i"><input type="number" id="s-interval" min="2" max="3600" value="60"></div></div>
+      <div class="r"><span class="r-l">Случайный</span><div class="sw"><input type="checkbox" id="s-shuffle" checked><label for="s-shuffle"></label></div></div>
+      <div class="r"><span class="r-l">Кнопки A1/A2</span><div class="sw"><input type="checkbox" id="s-actionBtns" checked><label for="s-actionBtns"></label></div></div>
+    </div>
+  </div>
+
+  <!-- RTSP -->
+  <div class="tc" id="t-rtsp">
+    <div class="card">
+      <h2>📷 Камера 1</h2>
+      <div class="r"><span class="r-l">Включить</span><div class="sw"><input type="checkbox" id="s-rtsp"><label for="s-rtsp"></label></div></div>
+      <div class="r"><span class="r-l">RTSP URL</span><div class="r-i"><input type="text" id="s-rtspUrl" placeholder="rtsp://user:pass@ip/stream"></div></div>
+      <div class="r"><span class="r-l">Время (сек)</span><div class="r-i"><input type="number" id="s-camDur" min="1" max="3600" value="30"></div></div>
+    </div>
+    <div class="card">
+      <h2>📷 Камера 2</h2>
+      <div class="r"><span class="r-l">Включить</span><div class="sw"><input type="checkbox" id="s-rtsp2"><label for="s-rtsp2"></label></div></div>
+      <div class="r"><span class="r-l">RTSP URL</span><div class="r-i"><input type="text" id="s-rtspUrl2" placeholder="rtsp://..."></div></div>
+      <div class="r"><span class="r-l">Время (сек)</span><div class="r-i"><input type="number" id="s-cam2Dur" min="1" max="3600" value="30"></div></div>
+    </div>
+    <div class="card">
+      <h2>📷 Камера 3</h2>
+      <div class="r"><span class="r-l">Включить</span><div class="sw"><input type="checkbox" id="s-rtsp3"><label for="s-rtsp3"></label></div></div>
+      <div class="r"><span class="r-l">RTSP URL</span><div class="r-i"><input type="text" id="s-rtspUrl3" placeholder="rtsp://..."></div></div>
+      <div class="r"><span class="r-l">Время (сек)</span><div class="r-i"><input type="number" id="s-cam3Dur" min="1" max="3600" value="30"></div></div>
+    </div>
+  </div>
+
+  <!-- SIGNALNET -->
+  <div class="tc" id="t-signalnet">
+    <div class="card">
+      <h2>🔌 SignalNet</h2>
+      <div class="r"><span class="r-l">Включить</span><div class="sw"><input type="checkbox" id="s-snEnable"><label for="s-snEnable"></label></div></div>
+      <div class="r"><span class="r-l">Адрес в сети</span><div class="r-i"><input type="number" id="s-snDevAddr" min="1" max="65535" value="3999"></div></div>
+      <div class="r"><span class="r-l">Сервер</span><div class="r-i"><input type="text" id="s-snServer" placeholder="192.168.1.1"></div></div>
+      <div class="r"><span class="r-l">Порт</span><div class="r-i"><input type="number" id="s-snPort" min="1" max="65535" value="8888"></div></div>
+      <div class="r"><span class="r-l">Транспорт</span><div class="r-i"><select id="s-snUdp"><option value="false">TCP</option><option value="true">UDP</option></select></div></div>
+      <div id="snTcpFields">
+        <div class="r"><span class="r-l">Логин</span><div class="r-i"><input type="text" id="s-snLogin"></div></div>
+        <div class="r"><span class="r-l">Пароль</span><div class="r-i"><input type="password" id="s-snPass"></div></div>
+      </div>
+      <div id="snUdpFields" style="display:none">
+        <div class="r"><span class="r-l">Лок. порт</span><div class="r-i"><input type="number" id="s-snUdpPort" value="29545"></div></div>
+        <div class="r"><span class="r-l">Ключ</span><div class="r-i"><input type="text" id="s-snKey" value="signalnet"></div></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <button class="btn btn-g" id="sn-connect" onclick="snConnect()">▶ Подключить</button>
+        <button class="btn btn-r" id="sn-disconnect" onclick="snDisconnect()" style="display:none">⏹ Отключить</button>
+        <span id="sn-status-text" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div class="sn-panel">
+        <div class="row"><label>Состояние:</label><span id="sn-st">—</span></div>
+        <div class="row"><label>Температура:</label><span id="sn-temp">—</span></div>
+        <div class="row"><label>Влажность:</label><span id="sn-hum">—</span></div>
+        <div class="row"><label>CO₂:</label><span id="sn-co2">—</span></div>
+        <div class="sn-log" id="sn-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="tc" id="t-schedule">
+    <div class="card">
+      <h2>⏰ Расписание</h2>
+      <div class="r"><span class="r-l">Таймер</span><div class="sw"><input type="checkbox" id="s-sched"><label for="s-sched"></label></div></div>
+      <div class="r"><span class="r-l">Пробуждение</span><div class="r-i"><input type="text" id="s-wake" placeholder="07:00" maxlength="5" style="max-width:80px"></div></div>
+      <div class="r"><span class="r-l">Сон</span><div class="r-i"><input type="text" id="s-sleep" placeholder="23:00" maxlength="5" style="max-width:80px"></div></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-s" onclick="loadSettings()">🔄 Загрузить</button>
+    <button class="btn btn-p" onclick="saveSettings()">💾 Сохранить</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('t-'+t.dataset.t).classList.add('active');
+});
+document.getElementById('s-snUdp').onchange=function(){
+  document.getElementById('snTcpFields').style.display=this.value==='true'?'none':'';
+  document.getElementById('snUdpFields').style.display=this.value==='true'?'':'none';
+};
+document.getElementById('s-guest').onchange=function(){
+  document.getElementById('s-user').disabled=this.checked;
+  document.getElementById('s-pass').disabled=this.checked;
+};
+function toast(m,ok){const t=document.getElementById('toast');t.textContent=m;t.className='toast '+(ok?'ok':'err')+' show';setTimeout(()=>t.classList.remove('show'),3000)}
+function logSn(msg,cls){const d=document.getElementById('sn-log');const l=document.createElement('div');l.className='line '+(cls||'');const now=new Date().toLocaleTimeString('ru-RU');l.textContent=now+' '+msg;d.appendChild(l);d.scrollTop=d.scrollHeight;if(d.children.length>50)d.removeChild(d.firstChild)}
+
+function setInd(id,val,unit,valid){
+  const el=document.getElementById('st-'+id);
+  const box=document.getElementById('sc-'+id);
+  if(valid){el.textContent=val+unit;el.className='vl';box.classList.remove('hide');}
+  else{box.classList.add('hide');}
+}
+
+async function loadStatus(){
+  try{
+    const d=await(await fetch('/api/status')).json();
+    document.getElementById('st-time').textContent=d.currentTime||'--:--';
+    document.getElementById('st-date').textContent=d.currentDate||'--';
+    const sn=document.getElementById('st-sn');
+    sn.textContent=d.connected?'OK':'Откл.';sn.className='vl'+(d.connected?'':' off');
+    document.getElementById('sc-sn').classList.remove('hide');
+    setInd('tout',d.temperatureOut,'°C',d.temperatureOutValid);
+    setInd('temp',d.temperature,'°C',d.temperatureValid);
+    setInd('thum',d.humidity,'%',d.humidityValid);
+    setInd('co2',d.co2,' ppm',d.co2Valid);
+    setInd('dust',d.dust,'');
+    const al=document.getElementById('st-alert');
+    al.textContent=d.alert||'Нет';
+    const p=document.getElementById('hst');
+    p.className='pill '+(d.connected?'on':'off');
+    p.querySelector('span').textContent=d.connected?'SignalNet: OK':'SignalNet: Откл.';
+    document.getElementById('sn-st').textContent=d.connected?'✅ Подключён':'❌ Отключён';
+    document.getElementById('sn-st').style.color=d.connected?'var(--green)':'var(--red)';
+    document.getElementById('sn-temp').textContent=d.temperatureValid?d.temperature+'°C':'—';
+    document.getElementById('sn-hum').textContent=d.humidityValid?d.humidity+' %':'—';
+    document.getElementById('sn-co2').textContent=d.co2Valid?d.co2+' ppm':'—';
+    document.getElementById('sn-connect').style.display=d.connected?'none':'';
+    document.getElementById('sn-disconnect').style.display=d.connected?'':'none';
+  }catch(e){
+    document.getElementById('hst').className='pill off';
+    document.getElementById('hst').querySelector('span').textContent='Нет связи';
+  }
+}
+
+async function loadSettings(){
+  try{
+    const s=await(await fetch('/api/settings')).json();
+    document.getElementById('s-server').value=s.server||'';
+    document.getElementById('s-share').value=s.share||'';
+    document.getElementById('s-user').value=s.user||'';
+    document.getElementById('s-pass').value=s.pass||'';
+    document.getElementById('s-guest').checked=!!s.useGuest;
+    document.getElementById('s-vers').value=s.smbVers||'3.0';
+    document.getElementById('s-interval').value=s.interval||60;
+    document.getElementById('s-shuffle').checked=!!s.shuffle;
+    document.getElementById('s-actionBtns').checked=!!s.useActionButtons;
+    document.getElementById('s-wake').value=s.wakeTime||'07:00';
+    document.getElementById('s-sleep').value=s.sleepTime||'23:00';
+    document.getElementById('s-sched').checked=!!s.useSchedule;
+    document.getElementById('s-rtsp').checked=!!s.useRtsp;
+    document.getElementById('s-rtspUrl').value=s.rtspUrl||'';
+    document.getElementById('s-camDur').value=s.cameraDuration||30;
+    document.getElementById('s-rtsp2').checked=!!s.useRtsp2;
+    document.getElementById('s-rtspUrl2').value=s.rtspUrl2||'';
+    document.getElementById('s-cam2Dur').value=s.camera2Duration||30;
+    document.getElementById('s-rtsp3').checked=!!s.useRtsp3;
+    document.getElementById('s-rtspUrl3').value=s.rtspUrl3||'';
+    document.getElementById('s-cam3Dur').value=s.camera3Duration||30;
+    document.getElementById('s-snEnable').checked=!!s.useSignalNet;
+    document.getElementById('s-snDevAddr').value=s.signalNetDeviceAddress||3999;
+    document.getElementById('s-snServer').value=s.signalNetServer||'';
+    document.getElementById('s-snPort').value=s.signalNetPort||8888;
+    document.getElementById('s-snUdp').value=s.signalNetUseUdp?'true':'false';
+    document.getElementById('s-snLogin').value=s.signalNetLogin||'';
+    document.getElementById('s-snPass').value=s.signalNetPass||'';
+    document.getElementById('s-snUdpPort').value=s.signalNetUdpLocalPort||29545;
+    document.getElementById('s-snKey').value=s.signalNetUdpKey||'signalnet';
+    document.getElementById('s-snUdp').dispatchEvent(new Event('change'));
+    document.getElementById('s-guest').dispatchEvent(new Event('change'));
+    toast('Загружено',true);
+  }catch(e){toast('Ошибка: '+e.message,false)}
+}
+
+async function saveSettings(){
+  const d={
+    server:document.getElementById('s-server').value,
+    share:document.getElementById('s-share').value,
+    user:document.getElementById('s-user').value,
+    pass:document.getElementById('s-pass').value,
+    useGuest:document.getElementById('s-guest').checked,
+    smbVers:document.getElementById('s-vers').value,
+    interval:parseInt(document.getElementById('s-interval').value)||60,
+    shuffle:document.getElementById('s-shuffle').checked,
+    useActionButtons:document.getElementById('s-actionBtns').checked,
+    useSchedule:document.getElementById('s-sched').checked,
+    wakeTime:document.getElementById('s-wake').value,
+    sleepTime:document.getElementById('s-sleep').value,
+    useRtsp:document.getElementById('s-rtsp').checked,
+    rtspUrl:document.getElementById('s-rtspUrl').value,
+    cameraDuration:parseInt(document.getElementById('s-camDur').value)||30,
+    useRtsp2:document.getElementById('s-rtsp2').checked,
+    rtspUrl2:document.getElementById('s-rtspUrl2').value,
+    camera2Duration:parseInt(document.getElementById('s-cam2Dur').value)||30,
+    useRtsp3:document.getElementById('s-rtsp3').checked,
+    rtspUrl3:document.getElementById('s-rtspUrl3').value,
+    camera3Duration:parseInt(document.getElementById('s-cam3Dur').value)||30,
+    useSignalNet:document.getElementById('s-snEnable').checked,
+    signalNetDeviceAddress:parseInt(document.getElementById('s-snDevAddr').value)||3999,
+    signalNetServer:document.getElementById('s-snServer').value,
+    signalNetPort:parseInt(document.getElementById('s-snPort').value)||8888,
+    signalNetUseUdp:document.getElementById('s-snUdp').value==='true',
+    signalNetLogin:document.getElementById('s-snLogin').value,
+    signalNetPass:document.getElementById('s-snPass').value,
+    signalNetUdpLocalPort:parseInt(document.getElementById('s-snUdpPort').value)||29545,
+    signalNetUdpKey:document.getElementById('s-snKey').value,
+  };
+  try{
+    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+    toast(r.ok?'✅ Сохранено!':'❌ Ошибка',r.ok);
+  }catch(e){toast('❌ '+e.message,false)}
+}
+
+async function snConnect(){
+  document.getElementById('sn-status-text').textContent='Подключение...';
+  logSn('Запрос подключения...','info');
+  try{
+    const r=await fetch('/api/signalnet/connect',{method:'POST'});
+    const d=await r.json();
+    if(d.ok){logSn('Команда отправлена','info');document.getElementById('sn-status-text').textContent='Ожидание...';}
+    else logSn('Ошибка: '+(d.error||''),'err');
+  }catch(e){logSn('Ошибка запроса: '+e.message,'err')}
+}
+
+async function snDisconnect(){
+  try{
+    await fetch('/api/signalnet/disconnect',{method:'POST'});
+    logSn('Отключение...','info');
+  }catch(e){}
+}
+
+loadSettings();loadStatus();
+setInterval(loadStatus,5000);
+</script>
+</body>
+</html>

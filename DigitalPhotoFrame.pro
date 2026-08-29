@@ -14,6 +14,7 @@ linux: QMAKE_LFLAGS += -Wl,--no-as-needed
 
 SOURCES += \
     main.cpp \
+    webserver.cpp \
     config.cpp \
     playlistmanager.cpp \
     photoframe.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
 
 HEADERS += \
     config.h \
+    webserver.h \
     playlistmanager.h \
     photoframe.h \
     signalnet.h \

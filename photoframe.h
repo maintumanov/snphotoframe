@@ -31,6 +31,8 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(QString currentTime READ currentTime NOTIFY tick)
     Q_PROPERTY(QString currentDate READ currentDate NOTIFY tick)
     Q_PROPERTY(QString currentImagePath READ currentImagePath NOTIFY imageChanged)
+    Q_PROPERTY(QString currentFileName READ currentFileName NOTIFY imageChanged)
+    Q_PROPERTY(QString currentFileDate READ currentFileDate NOTIFY imageChanged)
     Q_PROPERTY(int pageIndex READ pageIndex WRITE setPageIndex NOTIFY pageIndexChanged)
 
     Q_PROPERTY(QString server READ server WRITE setServer NOTIFY configChanged)
@@ -39,6 +41,7 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(QString pass READ pass WRITE setPass NOTIFY configChanged)
     Q_PROPERTY(int interval READ interval WRITE setInterval NOTIFY configChanged)
     Q_PROPERTY(bool shuffle READ shuffle WRITE setShuffle NOTIFY configChanged)
+    Q_PROPERTY(bool useActionButtons READ useActionButtons WRITE setUseActionButtons NOTIFY configChanged)
 
     Q_PROPERTY(bool useSchedule READ useSchedule WRITE setUseSchedule NOTIFY configChanged)
     Q_PROPERTY(QString wakeTime READ wakeTimeStr WRITE setWakeTimeStr NOTIFY configChanged)
@@ -101,6 +104,8 @@ public:
     QString currentTime() const;
     QString currentDate() const;
     QString currentImagePath() const;
+    QString currentFileName() const;
+    QString currentFileDate() const;
     int pageIndex() const;
     void setPageIndex(int p);
 
@@ -116,6 +121,8 @@ public:
     void setInterval(int v);
     bool shuffle() const;
     void setShuffle(bool v);
+    bool useActionButtons() const;
+    void setUseActionButtons(bool v);
 
     bool useSchedule() const;
     void setUseSchedule(bool v);
@@ -149,6 +156,8 @@ public:
 
     Q_INVOKABLE void nextSlide();
     Q_INVOKABLE void prevSlide();
+    Q_INVOKABLE void firstSlide();
+    Q_INVOKABLE void lastSlide();
     Q_INVOKABLE void toggleSlideshow();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE void connectAndScan();
@@ -310,6 +319,8 @@ private:
     bool m_destroyed = false;
     bool m_scanning = false;
     QString m_currentImagePath;
+    QString m_currentFileName;
+    QString m_currentFileDate;
     int m_imageCounter = 0;
     static const int kMaxConsecutiveFails = 50;
     RtspState m_rtspState = RtspIdle;

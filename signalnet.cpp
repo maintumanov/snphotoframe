@@ -234,6 +234,13 @@ void SignalNet::sendAction2()
     m_interface->actionNumOutput(SnOutputAction2);
 }
 
+void SignalNet::setDeviceAddress(int address)
+{
+    m_interface->actionSetAddress(static_cast<quint16>(address));
+    saveSettings();
+    qInfo() << "SignalNet: device address set to" << address;
+}
+
 void SignalNet::onEventConnect()
 {
     qInfo() << "SignalNet: connected and authorized via"
@@ -438,25 +445,30 @@ void SignalNet::onEventNumInput(int numInput, QByteArray data)
         break;
     }
     case input_dust: {
-        int val = static_cast<int>(QSNRAWtoUInt16(&data, 1));
+        // Type 37 (DUST): proper QSN decode via QSNRAWToVariant
+        QVariant v = QSNRAWToVariant(&data);
+        int val = v.isValid() ? v.toInt() : static_cast<int>(QSNRAWtoUInt16(&data, 1));
         bool wasValid = isDustValid();
         m_lastDustTime = QDateTime::currentDateTime();
         if (m_dust != val) {
             m_dust = val;
             emit dustChanged();
-            qInfo() << "SignalNet: dust =" << val;
+            qInfo() << "SignalNet: dust =" << val << "ug/m3";
         }
         if (!wasValid) emit dustValidChanged();
         break;
     }
     case input_var: {
-        qreal val = QSNRAWtoUInt16(&data, 1);
+        // Type 63 (VARIANT): data[0] contains the actual type,
+        // QSNRAWToVariant dispatches to the correct decoder
+        QVariant v = QSNRAWToVariant(&data);
+        qreal val = v.isValid() ? v.toReal() : 0;
         bool wasValid = isVarValid();
         m_lastVarTime = QDateTime::currentDateTime();
         if (m_var != val) {
             m_var = val;
             emit varChanged();
-            qInfo() << "SignalNet: var =" << val;
+            qInfo() << "SignalNet: var =" << val << "(type" << (data.size() > 0 ? static_cast<int>(static_cast<quint8>(data.at(0))) : -1) << ")";
         }
         if (!wasValid) emit varValidChanged();
         break;

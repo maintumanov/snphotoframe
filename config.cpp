@@ -8,7 +8,7 @@ void SmbConfig::load(const QString& fileName) {
     pass = s.value("smb/pass").toString();
     useGuest = s.value("smb/guest", true).toBool();
     smbVers = s.value("smb/vers", "3.0").toString();
-    interval = s.value("ui/interval", 5000).toInt();
+    interval = s.value("ui/interval", 60000).toInt();
     shuffle = s.value("ui/shuffle", true).toBool();
 
     useSchedule = s.value("schedule/enable", false).toBool();
@@ -18,6 +18,7 @@ void SmbConfig::load(const QString& fileName) {
     useRtsp = s.value("rtsp/enable", false).toBool();
     rtspUrl = s.value("rtsp/url").toString();
 
+    useActionButtons = s.value("ui/actionbuttons", true).toBool();
     useSignalNet = s.value("signalnet/enable", false).toBool();
     useUdp = s.value("signalnet/useudp", false).toBool();
     signalNetServer = s.value("signalnet/server").toString();
@@ -56,6 +57,7 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("rtsp/enable", useRtsp);
     s.setValue("rtsp/url", rtspUrl);
 
+    s.setValue("ui/actionbuttons", useActionButtons);
     s.setValue("signalnet/enable", useSignalNet);
     s.setValue("signalnet/useudp", useUdp);
     s.setValue("signalnet/server", signalNetServer);

@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QDirIterator>
 #include <QImageReader>
+#include <QFileInfo>
 #include <QtConcurrent>
 #include <QProcess>
 #include <QCoreApplication>
@@ -246,6 +247,14 @@ QString PhotoFrameBackend::currentImagePath() const {
     return m_currentImagePath;
 }
 
+QString PhotoFrameBackend::currentFileName() const {
+    return m_currentFileName;
+}
+
+QString PhotoFrameBackend::currentFileDate() const {
+    return m_currentFileDate;
+}
+
 int PhotoFrameBackend::pageIndex() const { return m_pageIndex; }
 void PhotoFrameBackend::setPageIndex(int p) {
     if (m_pageIndex != p) { m_pageIndex = p; emit pageIndexChanged(); }
@@ -276,6 +285,8 @@ void PhotoFrameBackend::setUser(const QString& v) { if (m_config.user != v) { m_
 void PhotoFrameBackend::setPass(const QString& v) { if (m_config.pass != v) { m_config.pass = v; emit configChanged(); } }
 void PhotoFrameBackend::setInterval(int v) { int ms = v * 1000; if (m_config.interval != ms) { m_config.interval = ms; emit configChanged(); } }
 void PhotoFrameBackend::setShuffle(bool v) { if (m_config.shuffle != v) { m_config.shuffle = v; emit configChanged(); } }
+bool PhotoFrameBackend::useActionButtons() const { return m_config.useActionButtons; }
+void PhotoFrameBackend::setUseActionButtons(bool v) { if (m_config.useActionButtons != v) { m_config.useActionButtons = v; emit configChanged(); } }
 void PhotoFrameBackend::setUseSchedule(bool v) { if (m_config.useSchedule != v) { m_config.useSchedule = v; emit configChanged(); } }
 void PhotoFrameBackend::setWakeTimeStr(const QString& v) {
     QTime t = QTime::fromString(v, "HH:mm");
@@ -333,6 +344,14 @@ bool PhotoFrameBackend::signalNetVarValid() const { return m_signalNet && m_sign
 int PhotoFrameBackend::cameraDuration() const { return m_config.cameraDuration; }
 void PhotoFrameBackend::setCameraDuration(int v) { if (m_config.cameraDuration != v) { m_config.cameraDuration = v; emit configChanged(); } }
 int PhotoFrameBackend::signalNetDeviceAddress() const { return m_config.signalNetDeviceAddress; }
+void PhotoFrameBackend::setSignalNetDeviceAddress(int v) {
+    quint16 addr = static_cast<quint16>(v);
+    if (m_config.signalNetDeviceAddress != addr) {
+        m_config.signalNetDeviceAddress = addr;
+        if (m_signalNet) m_signalNet->setDeviceAddress(addr);
+        emit configChanged();
+    }
+}
 
 
 void PhotoFrameBackend::onCameraTimeout() {
@@ -615,6 +634,18 @@ void PhotoFrameBackend::nextSlide() {
         m_imageProvider->setCurrentImage(loaded);
         m_imageCounter++;
         m_currentImagePath = QString("image://current/img?id=%1").arg(m_imageCounter);
+        m_currentFileName = QFileInfo(loadedPath).fileName();
+        // Extract photo date from EXIF or file modification time
+        QImageReader dateReader(loadedPath);
+        QString exifDate = dateReader.text("DateTimeOriginal");
+        if (exifDate.isEmpty()) exifDate = dateReader.text("DateTime");
+        if (!exifDate.isEmpty()) {
+            // EXIF format: "2024:01:15 14:30:00"
+            QDateTime dt = QDateTime::fromString(exifDate, "yyyy:MM:dd HH:mm:ss");
+            m_currentFileDate = dt.isValid() ? dt.toString("dd.MM.yyyy HH:mm") : exifDate;
+        } else {
+            m_currentFileDate = QFileInfo(loadedPath).lastModified().toString("dd.MM.yyyy HH:mm");
+        }
         QMetaObject::invokeMethod(this, [this]() {
             qInfo() << "Image loaded successfully, counter=" << m_imageCounter;
             emit imageChanged();
@@ -626,6 +657,20 @@ void PhotoFrameBackend::prevSlide() {
     if (m_isSleeping || m_playlist.isEmpty()) return;
     // nextSlide() reads m_idx then does +1, so we need -2 to go back one
     m_idx = (m_idx - 2 + m_playlist.size()) % m_playlist.size();
+    nextSlide();
+}
+
+void PhotoFrameBackend::firstSlide() {
+    if (m_isSleeping || m_playlist.isEmpty()) return;
+    // Go to the very first image: set idx so nextSlide() loads index 0
+    m_idx = m_playlist.size() - 1;
+    nextSlide();
+}
+
+void PhotoFrameBackend::lastSlide() {
+    if (m_isSleeping || m_playlist.isEmpty()) return;
+    // Go to the very last image: set idx so nextSlide() loads index size-1
+    m_idx = m_playlist.size() - 2;
     nextSlide();
 }
 
@@ -679,7 +724,7 @@ void PhotoFrameBackend::connectAndScan() {
         if (!useGuest) {
             opts += QString(",username=%1,password=%2").arg(user, pass);
         }
-        QProcess::execute("mount", {"-t", "cifs", QString("//%1/%2").arg(server, share), "/mnt/photoframe", "-o", opts});
+        QProcess::execute("sudo", {"mount", "-t", "cifs", QString("//%1/%2").arg(server, share), "/mnt/photoframe", "-o", opts});
 #endif
         if (m_destroyed) return;
         QString scanPath =
