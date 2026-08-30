@@ -87,6 +87,11 @@ void WebServer::handleRequest(QTcpSocket *socket, const QByteArray &request)
     } else if (path == "/api/signalnet/disconnect" && method == "POST") {
         m_backend->disconnectSignalNet();
         sendResponse(socket, 200, "application/json", "{\"ok\":true}");
+    } else if (path == "/api/rtsp" && method == "POST") {
+        // RTSP control: {"on":true|false, "camera":1|2|3}
+        int bodyStart = request.indexOf("\r\n\r\n");
+        QByteArray body = (bodyStart >= 0) ? request.mid(bodyStart + 4) : "";
+        handleRtspPost(socket, body);
     } else if (path == "/api/restart" && method == "POST") {
         sendResponse(socket, 200, "application/json", "{\"ok\":true}");
         QTimer::singleShot(500, this, &WebServer::restartRequested);
@@ -240,6 +245,28 @@ void WebServer::applySettings(const QJsonObject &json)
     if (json.contains("signalNetUdpLocalPort")) m_backend->setSignalNetUdpLocalPort(json["signalNetUdpLocalPort"].toInt());
     if (json.contains("signalNetUdpKey")) m_backend->setSignalNetUdpKey(json["signalNetUdpKey"].toString());
     if (json.contains("signalNetDeviceAddress")) m_backend->setSignalNetDeviceAddress(json["signalNetDeviceAddress"].toInt());
+}
+
+void WebServer::handleRtspPost(QTcpSocket *socket, const QByteArray &body)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(body);
+    if (doc.isNull()) {
+        sendResponse(socket, 400, "application/json", "{\"error\":\"invalid json\"}");
+        return;
+    }
+    QJsonObject o = doc.object();
+    const int cam = o.value("camera").toInt(1);
+    const bool on = o.value("on").toBool(true);
+    if (on) {
+        if (cam == 2) m_backend->reconnectRtsp2();
+        else if (cam == 3) m_backend->reconnectRtsp3();
+        else m_backend->reconnectRtsp();
+    } else {
+        if (cam == 2) m_backend->stopRtsp2();
+        else if (cam == 3) m_backend->stopRtsp3();
+        else m_backend->stopRtsp();
+    }
+    sendResponse(socket, 200, "application/json", "{\"ok\":true}");
 }
 
 QString WebServer::getJsonStatus()

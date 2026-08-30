@@ -804,6 +804,7 @@ void PhotoFrameBackend::resumeSlideshow() {
 
 void PhotoFrameBackend::startRtsp() {
     if (!m_config.useRtsp || m_config.rtspUrl.isEmpty()) return;
+    qInfo() << "RTSP1: start" << m_config.rtspUrl;
     m_slideshowTimer->stop();
     m_rtspRetryCount = 0;
     m_rtspRetryTimer->stop();
@@ -817,6 +818,7 @@ void PhotoFrameBackend::startRtsp() {
 }
 
 void PhotoFrameBackend::stopRtsp() {
+    qInfo() << "RTSP1: stop (state was" << m_rtspState << ")";
     m_rtspRetryTimer->stop();
     m_rtspFallbackTimer->stop();
     m_rtspRetryCount = 0;
@@ -839,6 +841,7 @@ void PhotoFrameBackend::setRtspState(RtspState s) {
 }
 
 void PhotoFrameBackend::onRtspPlaying() {
+    qInfo() << "RTSP1: playing (playbackState=Playing)";
     m_rtspFallbackTimer->stop();
     m_rtspRetryTimer->stop();
     m_rtspRetryCount = 0;
@@ -852,6 +855,7 @@ void PhotoFrameBackend::onRtspPlaying() {
 
 void PhotoFrameBackend::onRtspError(const QString& msg) {
     if (m_rtspState == RtspIdle) return; // already stopped
+    qInfo() << "RTSP1: error" << msg << "retryCount=" << m_rtspRetryCount;
     m_rtspFallbackTimer->stop();
     m_rtspRetryCount++;
 
@@ -868,6 +872,7 @@ void PhotoFrameBackend::onRtspError(const QString& msg) {
 
 void PhotoFrameBackend::onRtspRetryTimeout() {
     if (m_rtspState == RtspIdle) return;
+    qInfo() << "RTSP1: retry timeout, reconnecting";
     m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435... \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtspRetryCount + 1).arg(kMaxRtspRetries);
     emit rtspErrorMsgChanged();
     emit rtspShowOverlay(m_rtspErrorMsg);
@@ -878,6 +883,7 @@ void PhotoFrameBackend::onRtspRetryTimeout() {
 }
 
 void PhotoFrameBackend::onRtspFallbackTimeout() {
+    qInfo() << "RTSP1: fallback timeout (no playback) -> photos";
     stopRtsp();
     m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443...");
     emit rtspErrorMsgChanged();

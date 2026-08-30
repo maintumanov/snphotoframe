@@ -32,12 +32,14 @@ ApplicationWindow {
         }
         onSleepChanged: { sleepOverlay.visible = sleeping }
         onRtspPlay: {
+            console.log("RTSP1: QML play", url)
             rtspPlayer.stop()
             rtspPlayer.source = ""
             rtspResetTimer.url = url
             rtspResetTimer.start()
         }
         onRtspStopPlayer: {
+            console.log("RTSP1: QML stopPlayer")
             rtspResetTimer.stop()
             rtspPlayer.stop()
             rtspPlayer.source = ""
@@ -49,12 +51,14 @@ ApplicationWindow {
             connectingOverlay.visible = false
         }
         onRtsp2Play: {
+            console.log("RTSP2: QML play", url)
             rtspPlayer2.stop()
             rtspPlayer2.source = ""
             rtspResetTimer2.url = url
             rtspResetTimer2.start()
         }
         onRtsp2StopPlayer: {
+            console.log("RTSP2: QML stopPlayer")
             rtspResetTimer2.stop()
             rtspPlayer2.stop()
             rtspPlayer2.source = ""
@@ -62,12 +66,14 @@ ApplicationWindow {
         onRtsp2ShowOverlay: { connectingOverlay2.visible = true }
         onRtsp2HideOverlay: { connectingOverlay2.visible = false }
         onRtsp3Play: {
+            console.log("RTSP3: QML play", url)
             rtspPlayer3.stop()
             rtspPlayer3.source = ""
             rtspResetTimer3.url = url
             rtspResetTimer3.start()
         }
         onRtsp3StopPlayer: {
+            console.log("RTSP3: QML stopPlayer")
             rtspResetTimer3.stop()
             rtspPlayer3.stop()
             rtspPlayer3.source = ""
@@ -117,10 +123,12 @@ ApplicationWindow {
             id: rtspPlayer
             autoPlay: false
             onErrorChanged: {
+                console.log("RTSP1: errorChanged error=", error, errorString)
                 if (source.toString() !== "" && error !== MediaPlayer.NoError)
                     backend.onRtspError(errorString)
             }
             onPlaybackStateChanged: {
+                console.log("RTSP1: playbackState=", playbackState)
                 if (playbackState === MediaPlayer.PlayingState)
                     backend.onRtspPlaying()
             }
@@ -258,8 +266,8 @@ ApplicationWindow {
         // Camera 2
         MediaPlayer {
             id: rtspPlayer2; autoPlay: false
-            onErrorChanged: { if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp2Error(errorString) }
-            onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp2Playing() }
+            onErrorChanged: { console.log("RTSP2: errorChanged error=", error, errorString); if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp2Error(errorString) }
+            onPlaybackStateChanged: { console.log("RTSP2: playbackState=", playbackState); if (playbackState === MediaPlayer.PlayingState) backend.onRtsp2Playing() }
         }
         Timer {
             id: rtspResetTimer2
@@ -294,8 +302,8 @@ ApplicationWindow {
         // Camera 3
         MediaPlayer {
             id: rtspPlayer3; autoPlay: false
-            onErrorChanged: { if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp3Error(errorString) }
-            onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp3Playing() }
+            onErrorChanged: { console.log("RTSP3: errorChanged error=", error, errorString); if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp3Error(errorString) }
+            onPlaybackStateChanged: { console.log("RTSP3: playbackState=", playbackState); if (playbackState === MediaPlayer.PlayingState) backend.onRtsp3Playing() }
         }
         Timer {
             id: rtspResetTimer3

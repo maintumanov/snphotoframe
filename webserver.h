@@ -33,6 +33,7 @@ private:
     void sendResponse(QTcpSocket *socket, int code, const QString &contentType, const QByteArray &body);
     void handleApiGet(QTcpSocket *socket, const QString &path);
     void handleApiPost(QTcpSocket *socket, const QString &path, const QByteArray &body);
+    void handleRtspPost(QTcpSocket *socket, const QByteArray &body);
     QString getJsonStatus();
     void applySettings(const QJsonObject &json);
 
