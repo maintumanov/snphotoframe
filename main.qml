@@ -839,10 +839,9 @@ ApplicationWindow {
             Rectangle {
                 width: 34; height: 34; radius: 10
                 color: "#66000000"; border.color: backend.signalNetConnected ? "#5a5" : "#555"; border.width: 1
-                Rectangle { width: 10; height: 10; radius: 5; color: backend.signalNetConnected ? "#5a5" : "#f55"; anchors.centerIn: parent
-                    SequentialAnimation on opacity { running: backend.signalNetConnected; loops: Animation.Infinite
-                        NumberAnimation { from: 1; to: 0.4; duration: 1500; easing.type: Easing.InOutQuad }
-                        NumberAnimation { from: 0.4; to: 1; duration: 1500; easing.type: Easing.InOutQuad } } }
+                Rectangle { id: snPulseDot; width: 10; height: 10; radius: 5; color: backend.signalNetConnected ? "#5a5" : "#f55"; anchors.centerIn: parent; opacity: 0.8
+                    Timer { interval: 1000; repeat: true; running: backend.signalNetConnected
+                        onTriggered: snPulseDot.opacity = snPulseDot.opacity === 1 ? 0.5 : 1 } }
             }
 
             // Camera 1 indicator
