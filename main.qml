@@ -32,11 +32,15 @@ ApplicationWindow {
         }
         onSleepChanged: { sleepOverlay.visible = sleeping }
         onRtspPlay: {
-            rtspPlayer.source = url
-            rtspPlayer.play()
+            rtspPlayer.stop()
+            rtspPlayer.source = ""
+            rtspResetTimer.url = url
+            rtspResetTimer.start()
         }
         onRtspStopPlayer: {
+            rtspResetTimer.stop()
             rtspPlayer.stop()
+            rtspPlayer.source = ""
         }
         onRtspShowOverlay: {
             connectingOverlay.visible = true
@@ -44,12 +48,30 @@ ApplicationWindow {
         onRtspHideOverlay: {
             connectingOverlay.visible = false
         }
-        onRtsp2Play: { rtspPlayer2.source = url; rtspPlayer2.play() }
-        onRtsp2StopPlayer: { rtspPlayer2.stop() }
+        onRtsp2Play: {
+            rtspPlayer2.stop()
+            rtspPlayer2.source = ""
+            rtspResetTimer2.url = url
+            rtspResetTimer2.start()
+        }
+        onRtsp2StopPlayer: {
+            rtspResetTimer2.stop()
+            rtspPlayer2.stop()
+            rtspPlayer2.source = ""
+        }
         onRtsp2ShowOverlay: { connectingOverlay2.visible = true }
         onRtsp2HideOverlay: { connectingOverlay2.visible = false }
-        onRtsp3Play: { rtspPlayer3.source = url; rtspPlayer3.play() }
-        onRtsp3StopPlayer: { rtspPlayer3.stop() }
+        onRtsp3Play: {
+            rtspPlayer3.stop()
+            rtspPlayer3.source = ""
+            rtspResetTimer3.url = url
+            rtspResetTimer3.start()
+        }
+        onRtsp3StopPlayer: {
+            rtspResetTimer3.stop()
+            rtspPlayer3.stop()
+            rtspPlayer3.source = ""
+        }
         onRtsp3ShowOverlay: { connectingOverlay3.visible = true }
         onRtsp3HideOverlay: { connectingOverlay3.visible = false }
         onSignalNetAlertChanged: {
@@ -95,12 +117,23 @@ ApplicationWindow {
             id: rtspPlayer
             autoPlay: false
             onErrorChanged: {
-                if (error !== MediaPlayer.NoError)
+                if (source.toString() !== "" && error !== MediaPlayer.NoError)
                     backend.onRtspError(errorString)
             }
             onPlaybackStateChanged: {
                 if (playbackState === MediaPlayer.PlayingState)
                     backend.onRtspPlaying()
+            }
+        }
+
+        Timer {
+            id: rtspResetTimer
+            interval: 150
+            property string url: ""
+            onTriggered: {
+                rtspPlayer.stop()
+                rtspPlayer.source = url
+                rtspPlayer.play()
             }
         }
 
@@ -225,8 +258,18 @@ ApplicationWindow {
         // Camera 2
         MediaPlayer {
             id: rtspPlayer2; autoPlay: false
-            onErrorChanged: { if (error !== MediaPlayer.NoError) backend.onRtsp2Error(errorString) }
+            onErrorChanged: { if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp2Error(errorString) }
             onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp2Playing() }
+        }
+        Timer {
+            id: rtspResetTimer2
+            interval: 150
+            property string url: ""
+            onTriggered: {
+                rtspPlayer2.stop()
+                rtspPlayer2.source = url
+                rtspPlayer2.play()
+            }
         }
         VideoOutput { anchors.fill: parent; source: rtspPlayer2; visible: (backend.rtsp2State || 0) === 2 && rtspPlayer2.playbackState === MediaPlayer.PlayingState }
         Rectangle {
@@ -251,8 +294,18 @@ ApplicationWindow {
         // Camera 3
         MediaPlayer {
             id: rtspPlayer3; autoPlay: false
-            onErrorChanged: { if (error !== MediaPlayer.NoError) backend.onRtsp3Error(errorString) }
+            onErrorChanged: { if (source.toString() !== "" && error !== MediaPlayer.NoError) backend.onRtsp3Error(errorString) }
             onPlaybackStateChanged: { if (playbackState === MediaPlayer.PlayingState) backend.onRtsp3Playing() }
+        }
+        Timer {
+            id: rtspResetTimer3
+            interval: 150
+            property string url: ""
+            onTriggered: {
+                rtspPlayer3.stop()
+                rtspPlayer3.source = url
+                rtspPlayer3.play()
+            }
         }
         VideoOutput { anchors.fill: parent; source: rtspPlayer3; visible: (backend.rtsp3State || 0) === 2 && rtspPlayer3.playbackState === MediaPlayer.PlayingState }
         Rectangle {

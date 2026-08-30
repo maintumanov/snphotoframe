@@ -426,6 +426,7 @@ void PhotoFrameBackend::stopRtsp2() {
     setRtsp2State(RtspIdle);
     emit rtsp2StopPlayer();
     emit rtsp2HideOverlay();
+    resumeSlideshow();
 }
 
 void PhotoFrameBackend::reconnectRtsp2() {
@@ -511,6 +512,7 @@ void PhotoFrameBackend::stopRtsp3() {
     setRtsp3State(RtspIdle);
     emit rtsp3StopPlayer();
     emit rtsp3HideOverlay();
+    resumeSlideshow();
 }
 
 void PhotoFrameBackend::reconnectRtsp3() {
@@ -788,6 +790,18 @@ void PhotoFrameBackend::connectAndScan() {
     });
 }
 
+void PhotoFrameBackend::resumeSlideshow() {
+    if (m_isSleeping || m_playlist.isEmpty()) {
+        qInfo() << "resumeSlideshow skipped: sleeping=" << m_isSleeping << "playlist=" << m_playlist.size();
+        return;
+    }
+    if (m_rtspState != RtspIdle || m_rtsp2State != RtspIdle || m_rtsp3State != RtspIdle)
+        return; // an RTSP session is still active
+    m_slideshowTimer->stop();
+    m_slideshowTimer->start(m_config.interval);
+    nextSlide();
+}
+
 void PhotoFrameBackend::startRtsp() {
     if (!m_config.useRtsp || m_config.rtspUrl.isEmpty()) return;
     m_slideshowTimer->stop();
@@ -809,6 +823,7 @@ void PhotoFrameBackend::stopRtsp() {
     setRtspState(RtspIdle);
     emit rtspStopPlayer();
     emit rtspHideOverlay();
+    resumeSlideshow();
 }
 
 void PhotoFrameBackend::reconnectRtsp() {

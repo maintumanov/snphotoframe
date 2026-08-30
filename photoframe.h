@@ -313,6 +313,8 @@ private:
     void startRtsp3();
     void setRtsp3State(RtspState s);
 
+    void resumeSlideshow();
+
     QTimer* m_tickTimer;
     QTimer* m_slideshowTimer;
     QTimer* m_rtspRetryTimer;
