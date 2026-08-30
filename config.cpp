@@ -37,6 +37,8 @@ void SmbConfig::load(const QString& fileName) {
     useRtsp3 = s.value("rtsp3/enable", false).toBool();
     rtspUrl3 = s.value("rtsp3/url").toString();
     camera3Duration = s.value("rtsp3/cameraduration", 30).toInt();
+
+    brightness = s.value("display/brightness", 100).toInt();
 }
 
 void SmbConfig::save(const QString& fileName) const {
@@ -76,4 +78,6 @@ void SmbConfig::save(const QString& fileName) const {
     s.setValue("rtsp3/enable", useRtsp3);
     s.setValue("rtsp3/url", rtspUrl3);
     s.setValue("rtsp3/cameraduration", camera3Duration);
+
+    s.setValue("display/brightness", brightness);
 }

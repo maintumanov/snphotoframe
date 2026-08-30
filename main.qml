@@ -291,9 +291,9 @@ ApplicationWindow {
             anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
             height: 64; z: 2
             Repeater {
-                model: ["\u0421\u0435\u0442\u044c", "\u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435", "RTSP", "SignalNet"]
+                model: ["\u0421\u0435\u0442\u044c", "\u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435", "RTSP", "SignalNet", "\u0414\u0438\u0441\u043f\u043b\u0435\u0439"]
                 Rectangle {
-                    width: tabBar.width / 4; height: 64
+                    width: tabBar.width / 5; height: 64
                     color: settingsTab === index ? "#333" : "#1a1a1a"
                     border.color: settingsTab === index ? "#5af" : "#333"
                     border.width: settingsTab === index ? 2 : 1
@@ -517,6 +517,35 @@ ApplicationWindow {
                                 if (backend.signalNetConnected) backend.disconnectSignalNet()
                                 else backend.connectSignalNet() } } }
                         Text { text: backend.signalNetConnected ? "\u2705 \u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e" : "\u274c \u041e\u0442\u043a\u043b\u044e\u0447\u0435\u043d\u043e"; color: backend.signalNetConnected ? "#5a5" : "#f55"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter } }
+                }
+            }
+
+            // === TAB 4: Display ===
+            Flickable {
+                contentHeight: dispCol.height + 40; clip: true
+                Column {
+                    id: dispCol; width: parent.width - 60; x: 30; y: 20; spacing: 0
+
+                    Text { text: "\u0414\u0438\u0441\u043f\u043b\u0435\u0439"; color: "#aaa"; font.pixelSize: 20; font.bold: true; bottomPadding: 10 }
+
+                    Column { width: parent.width; spacing: 10
+                        Text { text: "DSI-\u043f\u043e\u0434\u0441\u0432\u0435\u0442\u043a\u0430 \u043d\u0435 \u043e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u0430"; color: "#888"; font.pixelSize: 14; visible: !backend.backlightAvailable }
+                        Row { spacing: 12; width: parent.width; height: 48
+                            Text { text: "\u042f\u0440\u043a\u043e\u0441\u0442\u044c"; color: "#ccc"; font.pixelSize: 16; width: 120; verticalAlignment: Text.AlignVCenter }
+                            Slider {
+                                id: brightSlider
+                                from: 0; to: 100; stepSize: 1
+                                value: backend.brightness
+                                onMoved: backend.brightness = value
+                                enabled: backend.backlightAvailable
+                                opacity: backend.backlightAvailable ? 1.0 : 0.4
+                                width: parent.width - 210
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Text { text: Math.round(backend.brightness) + " %"; color: "white"; font.pixelSize: 16; width: 60; verticalAlignment: Text.AlignVCenter }
+                        }
+                        Text { text: "\u0412 \u0441\u043f\u044f\u0449\u0435\u043c \u0440\u0435\u0436\u0438\u043c\u0435 \u044f\u0440\u043a\u043e\u0441\u0442\u044c \u0441\u043d\u0438\u0436\u0430\u0435\u0442\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438"; color: "#888"; font.pixelSize: 14; visible: backend.backlightAvailable }
+                    }
                 }
             }
         } // StackLayout

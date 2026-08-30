@@ -95,6 +95,9 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(QString signalNetUdpKey READ signalNetUdpKey WRITE setSignalNetUdpKey NOTIFY configChanged)
     Q_PROPERTY(int cameraDuration READ cameraDuration WRITE setCameraDuration NOTIFY configChanged)
 
+    Q_PROPERTY(int brightness READ brightness WRITE setBrightness NOTIFY configChanged)
+    Q_PROPERTY(bool backlightAvailable READ backlightAvailable)
+
 
 public:
     explicit PhotoFrameBackend(QObject* parent = nullptr);
@@ -215,6 +218,10 @@ public:
     int signalNetDeviceAddress() const;
     void setSignalNetDeviceAddress(int v);
 
+    int brightness() const;
+    void setBrightness(int v);
+    bool backlightAvailable() const;
+
     Q_INVOKABLE void connectSignalNet();
     Q_INVOKABLE void disconnectSignalNet();
     Q_INVOKABLE void clearSignalNetAlert();
@@ -296,6 +303,9 @@ private:
     void checkSchedule();
     void setSleepMode(bool sleep);
 
+    void applyBacklight(int pct);
+    void initBacklight();
+
     void startRtsp();
     void setRtspState(RtspState s);
     void startRtsp2();
@@ -342,6 +352,10 @@ private:
     QTimer* m_cameraTimer = nullptr;
     QTimer* m_camera2Timer = nullptr;
     QTimer* m_camera3Timer = nullptr;
+
+    int m_backlightMax = 255;
+    bool m_backlightAvailable = false;
+    static const int kSleepBrightness = 5;
 
 };
 

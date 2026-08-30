@@ -62,6 +62,8 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
              << "useRtsp=" << m_config.useRtsp << "rtspUrl=" << m_config.rtspUrl
              << "useGuest=" << m_config.useGuest;
 
+    initBacklight();
+
     // SignalNet
     m_signalNet = new SignalNet(this);
     connect(m_signalNet, &SignalNet::connectedChanged, this, &PhotoFrameBackend::signalNetConnectedChanged);
@@ -353,6 +355,49 @@ void PhotoFrameBackend::setSignalNetDeviceAddress(int v) {
     }
 }
 
+int PhotoFrameBackend::brightness() const { return m_config.brightness; }
+
+void PhotoFrameBackend::setBrightness(int v) {
+    v = qBound(0, v, 100);
+    if (m_config.brightness != v) {
+        m_config.brightness = v;
+        applyBacklight(v);
+        emit configChanged();
+    }
+}
+
+bool PhotoFrameBackend::backlightAvailable() const {
+    return m_backlightAvailable;
+}
+
+void PhotoFrameBackend::initBacklight() {
+#ifdef Q_OS_LINUX
+    m_backlightAvailable = QFile::exists("/sys/class/backlight/10-0045/brightness");
+    if (m_backlightAvailable) {
+        QFile maxFile("/sys/class/backlight/10-0045/max_brightness");
+        if (maxFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            bool ok = false;
+            int max = maxFile.readAll().trimmed().toInt(&ok);
+            maxFile.close();
+            if (ok && max > 0) m_backlightMax = max;
+        }
+        applyBacklight(m_config.brightness);
+    }
+#else
+    m_backlightAvailable = false;
+#endif
+}
+
+void PhotoFrameBackend::applyBacklight(int pct) {
+    if (!m_backlightAvailable) return;
+    int value = qBound(0, (pct * m_backlightMax + 50) / 100, m_backlightMax);
+    QFile file("/sys/class/backlight/10-0045/brightness");
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.write(QByteArray::number(value));
+        file.close();
+    }
+}
+
 
 void PhotoFrameBackend::onCameraTimeout() {
     qInfo() << "Camera OFF — timeout";
@@ -589,7 +634,9 @@ void PhotoFrameBackend::setSleepMode(bool sleep) {
     m_isSleeping = sleep;
     if (sleep) {
         m_slideshowTimer->stop();
+        applyBacklight(kSleepBrightness);
     } else {
+        applyBacklight(m_config.brightness);
         if (!m_playlist.isEmpty()) {
             m_slideshowTimer->start(m_config.interval);
             nextSlide();

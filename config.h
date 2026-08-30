@@ -44,6 +44,9 @@ struct SmbConfig {
     QString rtspUrl3;
     int camera3Duration = 30;
 
+    // Дисплей (DSI подсветка)
+    int brightness = 100;
+
     void load(const QString& fileName = "photoframe.ini");
     void save(const QString& fileName = "photoframe.ini") const;
 };
