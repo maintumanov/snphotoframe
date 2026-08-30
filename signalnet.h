@@ -201,6 +201,7 @@ private:
     QDateTime m_lastVarTime;
 
     void setupTransport();
+    void resetTelemetry();
 };
 
 #endif // SIGNALNET_H

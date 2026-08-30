@@ -6,6 +6,15 @@
 #include <QDebug>
 #include <QCoreApplication>
 
+// Freshness windows per metric: telemetry older than this is treated as invalid.
+namespace {
+constexpr qint64 kTempFreshSec = 4 * 3600;
+constexpr qint64 kHumFreshSec  = 2 * 3600;
+constexpr qint64 kCo2FreshSec  = 30 * 60;
+constexpr qint64 kDustFreshSec = 30 * 60;
+constexpr qint64 kVarFreshSec  = 1 * 3600;
+}
+
 SignalNet::SignalNet(QObject *parent)
     : QObject(parent)
     , m_interface(new QsnInterface(this))
@@ -108,32 +117,32 @@ bool SignalNet::absenceMode() const { return m_absenceMode; }
 bool SignalNet::useUdp() const { return m_useUdp; }
 bool SignalNet::isTemperatureValid() const {
     return m_lastTemperatureTime.isValid() &&
-           m_lastTemperatureTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastTemperatureTime.secsTo(QDateTime::currentDateTime()) < kTempFreshSec;
 }
 qreal SignalNet::temperatureOut() const { return m_temperatureOut; }
 bool SignalNet::isTemperatureOutValid() const {
     return m_lastTemperatureOutTime.isValid() &&
-           m_lastTemperatureOutTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastTemperatureOutTime.secsTo(QDateTime::currentDateTime()) < kTempFreshSec;
 }
 qreal SignalNet::humidity() const { return m_humidity; }
 bool SignalNet::isHumidityValid() const {
     return m_lastHumidityTime.isValid() &&
-           m_lastHumidityTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastHumidityTime.secsTo(QDateTime::currentDateTime()) < kHumFreshSec;
 }
 int SignalNet::co2() const { return m_co2; }
 bool SignalNet::isCo2Valid() const {
     return m_lastCo2Time.isValid() &&
-           m_lastCo2Time.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastCo2Time.secsTo(QDateTime::currentDateTime()) < kCo2FreshSec;
 }
 int SignalNet::dust() const { return m_dust; }
 bool SignalNet::isDustValid() const {
     return m_lastDustTime.isValid() &&
-           m_lastDustTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastDustTime.secsTo(QDateTime::currentDateTime()) < kDustFreshSec;
 }
 qreal SignalNet::var() const { return m_var; }
 bool SignalNet::isVarValid() const {
     return m_lastVarTime.isValid() &&
-           m_lastVarTime.secsTo(QDateTime::currentDateTime()) < 4 * 3600;
+           m_lastVarTime.secsTo(QDateTime::currentDateTime()) < kVarFreshSec;
 }
 
 void SignalNet::setupTransport()
@@ -220,6 +229,30 @@ void SignalNet::clearAlert()
     }
 }
 
+void SignalNet::resetTelemetry()
+{
+    // Drop all freshness windows on disconnect so a reconnect only shows fresh data,
+    // and clear any pending alert so an identical repeat alert can notify again.
+    m_lastTemperatureTime = QDateTime();
+    m_lastTemperatureOutTime = QDateTime();
+    m_lastHumidityTime = QDateTime();
+    m_lastCo2Time = QDateTime();
+    m_lastDustTime = QDateTime();
+    m_lastVarTime = QDateTime();
+    emit temperatureValidChanged();
+    emit temperatureOutValidChanged();
+    emit humidityValidChanged();
+    emit co2ValidChanged();
+    emit dustValidChanged();
+    emit varValidChanged();
+    if (!m_lastAlert.isEmpty()) {
+        m_lastAlert.clear();
+        m_alertSeverity = 0;
+        emit lastAlertChanged();
+        emit alertSeverityChanged(0);
+    }
+}
+
 void SignalNet::sendAction1()
 {
     if (!m_connected) return;
@@ -265,6 +298,8 @@ void SignalNet::onEventDisconnect()
         m_connected = false;
         emit connectedChanged();
     }
+    // Invalidate telemetry and clear pending alert (repeat alert notifies again after reconnect)
+    resetTelemetry();
     // Auto-reconnect if not user-initiated disconnect (like snpcagent connectTimer)
     if (!m_userDisconnected && !m_lastConnectAddress.isEmpty()) {
         qInfo() << "SignalNet: will reconnect in 5s";

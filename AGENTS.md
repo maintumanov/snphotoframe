@@ -55,8 +55,8 @@ All source files are in the repo root (flat layout):
 - **SMB mount:** On Linux, mounts via `mount -t cifs` to `/mnt/photoframe`. On Windows, uses `net use`. Config creds are passed on the command line — keep this in mind if adding logging.
 - **DSI backlight:** Brightness is written to `/sys/class/backlight/10-0045/brightness` via `QFile` (percentage mapped to `max_brightness`). `brightness` setting in `photoframe.ini` under `display/`. Backlight turns fully OFF (value 0) during sleep mode / absence; a fullscreen black overlay additionally hides content on platforms without backlight control (e.g. Windows). The sysfs write is silently skipped when the file is absent.
 - **RTSP viewer:** QML `MediaPlayer` + `VideoOutput` with a retry overlay and auto-fallback to photos.
-- **SignalNet integration:** TCP client connects to SignalNet home automation controller. Receives temperature, alerts (fire/water/gas), bell notifications, and media commands. Sends heartbeat pulse. Control bar shows temperature when connected.
-- **Control bar:** Bottom bar with 7 buttons (time, date, temperature, video, settings, tasks, calendar). Time/date update every second via `m_tickTimer`. Temperature shows when SignalNet is connected. Bar is hidden during sleep.
+- **SignalNet integration:** TCP client connects to SignalNet home automation controller. Receives temperature, alerts (fire/water/gas), bell notifications, media commands, absence state. Sends heartbeat pulse. Indicator panel with telemetry (indoor/outdoor temperature, humidity, CO2, dust, VAR) shows top-right only when connected; each card hides when its data goes stale (freshness windows vary per metric — temperature 4h, humidity 2h, VAR 1h, CO2/dust 30min). Telemetry and pending alerts are cleared on disconnect so a reconnect never shows stale data.
+- **Control bar:** Bottom bar — buttons: `⏮` (first slide), video 1/2/3 (only for enabled cameras), `A1`/`A2` SignalNet actions (when connected + `useActionButtons`), `⏭` (last slide). Time/date overlay sits top-left and updates every second via `m_tickTimer`. Bar and overlays are hidden during sleep.
 
 ## Keyboard shortcuts
 

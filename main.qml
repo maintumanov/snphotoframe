@@ -81,10 +81,10 @@ ApplicationWindow {
         onRtsp3ShowOverlay: { connectingOverlay3.visible = true }
         onRtsp3HideOverlay: { connectingOverlay3.visible = false }
         onSignalNetAlertChanged: {
-            if (backend.signalNetAlert.length > 0) {
-                snAlertBanner.visible = true
-                snAlertBanner.opacity = 1
-            }
+            if (backend.signalNetAlert.length > 0)
+                snAlertBanner.show()
+            else
+                snAlertBanner.hide()
         }
     }
 
@@ -985,11 +985,29 @@ ApplicationWindow {
         color: Qt.rgba(0.1, 0.1, 0.1, 0.92)
         border.color: accentColor; border.width: 2
         opacity: 0; y: -80
-        onVisibleChanged: { if (visible) { slideIn.start(); autoHide.restart() } }
+
+        function show() {
+            slideOut.stop()
+            fadeOut.stop()
+            autoHide.stop()
+            visible = true
+            opacity = 1
+            slideIn.restart()
+            autoHide.start()
+        }
+        function hide() {
+            if (visible && !slideOut.running) {
+                autoHide.stop()
+                slideOut.start()
+                fadeOut.start()
+            }
+            backend.clearSignalNetAlert()
+        }
+        onVisibleChanged: { if (visible) slideIn.start() }
         NumberAnimation on y { id: slideIn; from: -80; to: 20; duration: 300; easing.type: Easing.OutCubic
             onRunningChanged: { if (!running && snAlertBanner.visible) snAlertBanner.opacity = 1.0 } }
         NumberAnimation on y { id: slideOut; from: 20; to: -80; duration: 250; easing.type: Easing.InCubic
-            onRunningChanged: { if (!running) snAlertBanner.visible = false } }
+            onFinished: snAlertBanner.visible = false }
         NumberAnimation on opacity { id: fadeIn; from: 0; to: 1; duration: 300 }
         NumberAnimation on opacity { id: fadeOut; from: 1; to: 0; duration: 250 }
         Row {
@@ -1008,12 +1026,12 @@ ApplicationWindow {
             }
             Text { text: backend.signalNetAlert; color: "white"; font.pixelSize: 22; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
             Text { text: "\u00d7"; color: "#aaa"; font.pixelSize: 24; anchors.verticalCenter: parent.verticalCenter
-                MouseArea { anchors.fill: parent; onClicked: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
+                MouseArea { anchors.fill: parent; onClicked: snAlertBanner.hide() }
             }
         }
-        MouseArea { anchors.fill: parent; onClicked: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
-        Timer { id: autoHide; interval: 8000; running: snAlertBanner.visible
-            onTriggered: { fadeOut.start(); slideOut.start(); backend.clearSignalNetAlert() } }
+        MouseArea { anchors.fill: parent; onClicked: snAlertBanner.hide() }
+        Timer { id: autoHide; interval: 8000
+            onTriggered: snAlertBanner.hide() }
     }
 
     MouseArea { anchors.fill: parent; z: 1; visible: backend.pageIndex === 0 && (backend.rtspState || 0) !== 2; onClicked: backend.nextSlide(); propagateComposedEvents: true }
