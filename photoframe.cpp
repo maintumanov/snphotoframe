@@ -88,11 +88,6 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
     connect(m_signalNet, &SignalNet::absenceModeChanged, this, [this]() {
         bool absent = m_signalNet->absenceMode();
         qInfo() << "Absence mode" << (absent ? "ON" : "OFF");
-        if (absent) {
-            stopRtsp();
-            stopRtsp2();
-            stopRtsp3();
-        }
         setSleepMode(absent);
     });
     if (m_config.useSignalNet && !m_config.signalNetServer.isEmpty()) {
@@ -407,7 +402,10 @@ void PhotoFrameBackend::onCameraTimeout() {
 // --- Camera 2 ---
 void PhotoFrameBackend::startRtsp2() {
     if (!m_config.useRtsp2 || m_config.rtspUrl2.isEmpty()) return;
+    forceStopRtsp();
+    forceStopRtsp3();
     m_slideshowTimer->stop();
+    ++m_rtsp2Session;
     m_rtsp2RetryCount = 0;
     m_rtsp2RetryTimer->stop();
     m_rtsp2FallbackTimer->stop();
@@ -419,13 +417,18 @@ void PhotoFrameBackend::startRtsp2() {
     emit rtsp2Play(m_config.rtspUrl2);
 }
 
-void PhotoFrameBackend::stopRtsp2() {
+void PhotoFrameBackend::forceStopRtsp2() {
+    ++m_rtsp2Session;
     m_rtsp2RetryTimer->stop();
     m_rtsp2FallbackTimer->stop();
     m_rtsp2RetryCount = 0;
     setRtsp2State(RtspIdle);
     emit rtsp2StopPlayer();
     emit rtsp2HideOverlay();
+}
+
+void PhotoFrameBackend::stopRtsp2() {
+    forceStopRtsp2();
     resumeSlideshow();
 }
 
@@ -446,8 +449,9 @@ void PhotoFrameBackend::onRtsp2Playing() {
     m_rtsp2RetryTimer->stop();
     m_rtsp2RetryCount = 0;
     setRtsp2State(RtspPlaying);
-    QTimer::singleShot(5000, this, [this]() {
-        if (m_rtsp2State == RtspPlaying)
+    const int session = m_rtsp2Session;
+    QTimer::singleShot(5000, this, [this, session]() {
+        if (m_rtsp2State == RtspPlaying && m_rtsp2Session == session)
             emit rtsp2HideOverlay();
     });
 }
@@ -493,7 +497,10 @@ void PhotoFrameBackend::onCamera2Timeout() {
 // --- Camera 3 ---
 void PhotoFrameBackend::startRtsp3() {
     if (!m_config.useRtsp3 || m_config.rtspUrl3.isEmpty()) return;
+    forceStopRtsp();
+    forceStopRtsp2();
     m_slideshowTimer->stop();
+    ++m_rtsp3Session;
     m_rtsp3RetryCount = 0;
     m_rtsp3RetryTimer->stop();
     m_rtsp3FallbackTimer->stop();
@@ -505,13 +512,18 @@ void PhotoFrameBackend::startRtsp3() {
     emit rtsp3Play(m_config.rtspUrl3);
 }
 
-void PhotoFrameBackend::stopRtsp3() {
+void PhotoFrameBackend::forceStopRtsp3() {
+    ++m_rtsp3Session;
     m_rtsp3RetryTimer->stop();
     m_rtsp3FallbackTimer->stop();
     m_rtsp3RetryCount = 0;
     setRtsp3State(RtspIdle);
     emit rtsp3StopPlayer();
     emit rtsp3HideOverlay();
+}
+
+void PhotoFrameBackend::stopRtsp3() {
+    forceStopRtsp3();
     resumeSlideshow();
 }
 
@@ -532,8 +544,9 @@ void PhotoFrameBackend::onRtsp3Playing() {
     m_rtsp3RetryTimer->stop();
     m_rtsp3RetryCount = 0;
     setRtsp3State(RtspPlaying);
-    QTimer::singleShot(5000, this, [this]() {
-        if (m_rtsp3State == RtspPlaying)
+    const int session = m_rtsp3Session;
+    QTimer::singleShot(5000, this, [this, session]() {
+        if (m_rtsp3State == RtspPlaying && m_rtsp3Session == session)
             emit rtsp3HideOverlay();
     });
 }
@@ -635,6 +648,7 @@ void PhotoFrameBackend::checkSchedule() {
 void PhotoFrameBackend::setSleepMode(bool sleep) {
     m_isSleeping = sleep;
     if (sleep) {
+        stopAllCameras();
         m_slideshowTimer->stop();
         applyBacklight(kSleepBacklight);
     } else {
@@ -661,8 +675,9 @@ void PhotoFrameBackend::nextSlide() {
         int idx = startIdx;
         QImage loaded;
         QString loadedPath;
+        QString fileName;
+        QString fileDate;
 
-        // Skip broken files directly in the worker thread
         for (int attempt = 0; attempt < kMaxConsecutiveFails; ++attempt) {
             loadedPath = playlist[idx];
             QImageReader reader(loadedPath);
@@ -671,31 +686,33 @@ void PhotoFrameBackend::nextSlide() {
             if (!loaded.isNull()) break;
             idx = (idx + 1) % playlistSize;
         }
+        const int nextIdx = (idx + 1) % playlistSize;
 
         if (m_destroyed) return;
 
-        if (loaded.isNull()) {
-            m_idx = (idx + 1) % playlistSize;
-            return;
+        if (!loaded.isNull()) {
+            fileName = QFileInfo(loadedPath).fileName();
+            QImageReader dateReader(loadedPath);
+            QString exifDate = dateReader.text("DateTimeOriginal");
+            if (exifDate.isEmpty()) exifDate = dateReader.text("DateTime");
+            if (!exifDate.isEmpty()) {
+                QDateTime dt = QDateTime::fromString(exifDate, "yyyy:MM:dd HH:mm:ss");
+                fileDate = dt.isValid() ? dt.toString("dd.MM.yyyy HH:mm") : exifDate;
+            } else {
+                fileDate = QFileInfo(loadedPath).lastModified().toString("dd.MM.yyyy HH:mm");
+            }
         }
 
-        m_idx = (idx + 1) % playlistSize;
-        m_imageProvider->setCurrentImage(loaded);
-        m_imageCounter++;
-        m_currentImagePath = QString("image://current/img?id=%1").arg(m_imageCounter);
-        m_currentFileName = QFileInfo(loadedPath).fileName();
-        // Extract photo date from EXIF or file modification time
-        QImageReader dateReader(loadedPath);
-        QString exifDate = dateReader.text("DateTimeOriginal");
-        if (exifDate.isEmpty()) exifDate = dateReader.text("DateTime");
-        if (!exifDate.isEmpty()) {
-            // EXIF format: "2024:01:15 14:30:00"
-            QDateTime dt = QDateTime::fromString(exifDate, "yyyy:MM:dd HH:mm:ss");
-            m_currentFileDate = dt.isValid() ? dt.toString("dd.MM.yyyy HH:mm") : exifDate;
-        } else {
-            m_currentFileDate = QFileInfo(loadedPath).lastModified().toString("dd.MM.yyyy HH:mm");
-        }
-        QMetaObject::invokeMethod(this, [this]() {
+        if (m_destroyed) return;
+
+        QMetaObject::invokeMethod(this, [this, loaded, fileName, fileDate, nextIdx]() {
+            m_idx = nextIdx;
+            if (loaded.isNull()) return;
+            m_imageProvider->setCurrentImage(loaded);
+            m_imageCounter++;
+            m_currentImagePath = QString("image://current/img?id=%1").arg(m_imageCounter);
+            m_currentFileName = fileName;
+            m_currentFileDate = fileDate;
             qInfo() << "Image loaded successfully, counter=" << m_imageCounter;
             emit imageChanged();
         });
@@ -711,15 +728,13 @@ void PhotoFrameBackend::prevSlide() {
 
 void PhotoFrameBackend::firstSlide() {
     if (m_isSleeping || m_playlist.isEmpty()) return;
-    // Go to the very first image: set idx so nextSlide() loads index 0
-    m_idx = m_playlist.size() - 1;
+    m_idx = 0;
     nextSlide();
 }
 
 void PhotoFrameBackend::lastSlide() {
     if (m_isSleeping || m_playlist.isEmpty()) return;
-    // Go to the very last image: set idx so nextSlide() loads index size-1
-    m_idx = m_playlist.size() - 2;
+    m_idx = m_playlist.size() - 1;
     nextSlide();
 }
 
@@ -734,7 +749,7 @@ void PhotoFrameBackend::saveSettings() {
     qInfo() << "Saving settings: server=" << m_config.server << "useRtsp=" << m_config.useRtsp;
     m_config.save(QSNHomePath("photoframe").absoluteFilePath("photoframe.ini"));
     PlaylistManager::clear();
-    stopRtsp();
+    stopAllCameras();
 
     connectAndScan();
     setPageIndex(0);
@@ -802,10 +817,19 @@ void PhotoFrameBackend::resumeSlideshow() {
     nextSlide();
 }
 
+void PhotoFrameBackend::stopAllCameras() {
+    forceStopRtsp();
+    forceStopRtsp2();
+    forceStopRtsp3();
+}
+
 void PhotoFrameBackend::startRtsp() {
     if (!m_config.useRtsp || m_config.rtspUrl.isEmpty()) return;
+    forceStopRtsp2();
+    forceStopRtsp3();
     qInfo() << "RTSP1: start" << m_config.rtspUrl;
     m_slideshowTimer->stop();
+    ++m_rtspSession;
     m_rtspRetryCount = 0;
     m_rtspRetryTimer->stop();
     m_rtspFallbackTimer->stop();
@@ -817,14 +841,19 @@ void PhotoFrameBackend::startRtsp() {
     emit rtspPlay(m_config.rtspUrl);
 }
 
-void PhotoFrameBackend::stopRtsp() {
-    qInfo() << "RTSP1: stop (state was" << m_rtspState << ")";
+void PhotoFrameBackend::forceStopRtsp() {
+    ++m_rtspSession;
     m_rtspRetryTimer->stop();
     m_rtspFallbackTimer->stop();
     m_rtspRetryCount = 0;
     setRtspState(RtspIdle);
     emit rtspStopPlayer();
     emit rtspHideOverlay();
+}
+
+void PhotoFrameBackend::stopRtsp() {
+    qInfo() << "RTSP1: stop (state was" << m_rtspState << ")";
+    forceStopRtsp();
     resumeSlideshow();
 }
 
@@ -846,9 +875,9 @@ void PhotoFrameBackend::onRtspPlaying() {
     m_rtspRetryTimer->stop();
     m_rtspRetryCount = 0;
     setRtspState(RtspPlaying);
-    // Hide overlay after 5 seconds
-    QTimer::singleShot(5000, this, [this]() {
-        if (m_rtspState == RtspPlaying)
+    const int session = m_rtspSession;
+    QTimer::singleShot(5000, this, [this, session]() {
+        if (m_rtspState == RtspPlaying && m_rtspSession == session)
             emit rtspHideOverlay();
     });
 }
@@ -917,21 +946,8 @@ void PhotoFrameBackend::onScanFinished(const QStringList& list) {
     }
     m_idx = 0;
 
-    if (m_rtspState != RtspPlaying) {
-        m_rtspFallbackTimer->stop();
-        m_rtspRetryTimer->stop();
-        setRtspState(RtspIdle);
-        emit rtspStopPlayer();
-        emit rtspHideOverlay();
-    }
-
-    if (!m_isSleeping) {
-        qInfo() << "Starting slideshow: interval=" << m_config.interval << "ms";
-        m_slideshowTimer->start(m_config.interval);
-        nextSlide();
-    } else {
-        qInfo() << "Sleeping, not starting slideshow";
-    }
+    stopAllCameras();
+    resumeSlideshow();
 }
 
 QStringList PhotoFrameBackend::tasks() const {

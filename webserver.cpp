@@ -320,7 +320,7 @@ QString WebServer::getJsonStatus()
     s["rtsp3State"] = m_backend->rtsp3State();
     s["currentTime"] = m_backend->currentTime();
     s["currentDate"] = m_backend->currentDate();
-    s["sleeping"] = m_backend->property("pageIndex").toInt() == 0;
-    s["playlistSize"] = m_backend->tasks().size();
+    s["sleeping"] = m_backend->isSleeping();
+    s["playlistSize"] = m_backend->playlistSize();
     return QJsonDocument(s).toJson(QJsonDocument::Compact);
 }

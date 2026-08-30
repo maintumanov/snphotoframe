@@ -170,6 +170,9 @@ public:
     Q_INVOKABLE void fallbackToPhotos();
     Q_INVOKABLE QStringList tasks() const;
 
+    bool isSleeping() const { return m_isSleeping; }
+    int playlistSize() const { return m_playlist.size(); }
+
     // Called by QML MediaPlayer to report state back to backend
     Q_INVOKABLE void onRtspPlaying();
     Q_INVOKABLE void onRtspError(const QString& msg);
@@ -314,6 +317,10 @@ private:
     void setRtsp3State(RtspState s);
 
     void resumeSlideshow();
+    void stopAllCameras();
+    void forceStopRtsp();
+    void forceStopRtsp2();
+    void forceStopRtsp3();
 
     QTimer* m_tickTimer;
     QTimer* m_slideshowTimer;
@@ -337,15 +344,18 @@ private:
     static const int kMaxConsecutiveFails = 50;
     RtspState m_rtspState = RtspIdle;
     int m_rtspRetryCount = 0;
+    int m_rtspSession = 0;
     static const int kMaxRtspRetries = 3;
     QString m_rtspErrorMsg;
 
     RtspState m_rtsp2State = RtspIdle;
     int m_rtsp2RetryCount = 0;
+    int m_rtsp2Session = 0;
     QString m_rtsp2ErrorMsg;
 
     RtspState m_rtsp3State = RtspIdle;
     int m_rtsp3RetryCount = 0;
+    int m_rtsp3Session = 0;
     QString m_rtsp3ErrorMsg;
 
     ImageProvider* m_imageProvider = nullptr;

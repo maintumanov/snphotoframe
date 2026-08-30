@@ -98,7 +98,7 @@ ApplicationWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             opacity: 1.0
-            visible: (backend.rtspState || 0) !== 2
+            visible: (backend.rtspState || 0) !== 2 && (backend.rtsp2State || 0) !== 2 && (backend.rtsp3State || 0) !== 2
         }
 
         Image {
@@ -107,7 +107,7 @@ ApplicationWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             opacity: 0.0
-            visible: (backend.rtspState || 0) !== 2
+            visible: (backend.rtspState || 0) !== 2 && (backend.rtsp2State || 0) !== 2 && (backend.rtsp3State || 0) !== 2
         }
 
         ParallelAnimation { id: animA
@@ -206,7 +206,7 @@ ApplicationWindow {
                 // Status text
                 Text {
                     id: statusText
-                    text: (backend.rtspState || 0) === 3 ? backend.rtspErrorMsg : backend.rtspErrorMsg
+                    text: backend.rtspErrorMsg
                     color: "white"
                     font.pixelSize: 24
                     font.bold: true
@@ -804,7 +804,7 @@ ApplicationWindow {
         }
     }
 
-    Rectangle { id: sleepOverlay; anchors.fill: parent; color: "transparent"; visible: false; z: 50 }
+    Rectangle { id: sleepOverlay; anchors.fill: parent; color: "#000000"; visible: false; z: 50 }
 
     // Time & Date + Action Buttons — top left corner over photo
     Column {
