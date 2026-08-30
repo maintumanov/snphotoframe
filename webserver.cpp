@@ -45,14 +45,45 @@ void WebServer::onReadyRead()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
     if (!socket) return;
-    QByteArray request = socket->readAll();
-    handleRequest(socket, request);
+    m_buffers[socket].append(socket->readAll());
+    if (processRequests(socket) > 0)
+        socket->disconnectFromHost();
+}
+
+int WebServer::processRequests(QTcpSocket *socket)
+{
+    QByteArray &buf = m_buffers[socket];
+    int count = 0;
+    for (;;) {
+        int headerEnd = buf.indexOf("\r\n\r\n");
+        if (headerEnd < 0) break;
+        int contentLength = 0;
+        const QByteArray headerBlock = buf.left(headerEnd);
+        const QList<QByteArray> headerLines = headerBlock.split('\n');
+        for (const QByteArray &line : headerLines) {
+            int colon = line.indexOf(':');
+            if (colon <= 0) continue;
+            if (line.left(colon).trimmed().toLower() == "content-length") {
+                contentLength = line.mid(colon + 1).trimmed().toInt();
+                break;
+            }
+        }
+        const int total = headerEnd + 4 + contentLength;
+        if (buf.size() < total) break;
+        handleRequest(socket, buf.left(total));
+        buf.remove(0, total);
+        ++count;
+    }
+    return count;
 }
 
 void WebServer::onDisconnected()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
-    if (socket) socket->deleteLater();
+    if (socket) {
+        m_buffers.remove(socket);
+        socket->deleteLater();
+    }
 }
 
 void WebServer::handleRequest(QTcpSocket *socket, const QByteArray &request)

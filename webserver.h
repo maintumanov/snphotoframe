@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include <QString>
+#include <QHash>
 
 class PhotoFrameBackend;
 
@@ -30,6 +31,7 @@ private slots:
 
 private:
     void handleRequest(QTcpSocket *socket, const QByteArray &request);
+    int processRequests(QTcpSocket *socket);
     void sendResponse(QTcpSocket *socket, int code, const QString &contentType, const QByteArray &body);
     void handleApiGet(QTcpSocket *socket, const QString &path);
     void handleApiPost(QTcpSocket *socket, const QString &path, const QByteArray &body);
@@ -40,6 +42,7 @@ private:
     QTcpServer *m_server;
     PhotoFrameBackend *m_backend;
     quint16 m_port;
+    QHash<QTcpSocket*, QByteArray> m_buffers;
 };
 
 #endif // WEBSERVER_H
