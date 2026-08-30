@@ -32,6 +32,15 @@ All source files are in the repo root (flat layout):
 | `config.cpp/h` | `SmbConfig` struct, reads/writes `photoframe.ini` via `QSettings` |
 | `signalnet.cpp/h` | Simplified SignalNet TCP client — temperature, alerts, media control |
 | `main.qml` | QML UI — crossfade images, settings overlay, tasks, calendar, RTSP, SignalNet, control bar |
+| `setup_raspbian.sh` | One-time RPi OS setup script |
+| `update_photoframe.sh` | Deploy script (installed on the Pi as `~/update_photoframe.sh`): pulls from NAS bare repo, builds, restarts the app. Secrets are read from `~/update_photoframe.conf` (NOT in git; template: `update_photoframe.conf.example`) |
+| `web/` | Web UI served by WebServer |
+
+## Runtime behavior (SD-card friendly)
+
+- App settings `photoframe.ini`, cached `playlist.txt` — written only on user actions (settings save, SMB scan). No periodic writes.
+- App log goes to RAM: `/dev/shm/photoframe.log` (survives until reboot) — never touched by continuous SignalNet telemetry logging.
+- journald is volatile (RAM), no persistent journal on the SD card.
 
 ## Runtime files (generated, not in repo)
 
