@@ -743,7 +743,7 @@ ApplicationWindow {
         }
     }
 
-    Rectangle { id: sleepOverlay; anchors.fill: parent; color: "black"; visible: false; z: 50 }
+    Rectangle { id: sleepOverlay; anchors.fill: parent; color: "transparent"; visible: false; z: 50 }
 
     // Time & Date + Action Buttons — top left corner over photo
     Column {

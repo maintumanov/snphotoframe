@@ -355,7 +355,7 @@ private:
 
     int m_backlightMax = 255;
     bool m_backlightAvailable = false;
-    static const int kSleepBrightness = 5;
+    static const int kSleepBacklight = 0; // выключить подсветку полностью (не прятать изображение)
 
 };
 

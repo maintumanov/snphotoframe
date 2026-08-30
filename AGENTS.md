@@ -44,7 +44,7 @@ All source files are in the repo root (flat layout):
 - **Crossfade:** Two QML `Image` elements (`imageA`/`imageB`) animated with `ParallelAnimation` (opacity 0↔1).
 - **Image loading:** `QtConcurrent::run` offloads `QImageReader` reads; results pushed to a `QQuickImageProvider` via `QMetaObject::invokeMethod`.
 - **SMB mount:** On Linux, mounts via `mount -t cifs` to `/mnt/photoframe`. On Windows, uses `net use`. Config creds are passed on the command line — keep this in mind if adding logging.
-- **DSI backlight:** Brightness is written to `/sys/class/backlight/10-0045/brightness` via `QFile` (percentage mapped to `max_brightness`). `brightness` setting in `photoframe.ini` under `display/`. Backlight dims to 5% during sleep mode and is silently skipped when the sysfs file is absent (e.g. Windows).
+- **DSI backlight:** Brightness is written to `/sys/class/backlight/10-0045/brightness` via `QFile` (percentage mapped to `max_brightness`). `brightness` setting in `photoframe.ini` under `display/`. Backlight turns fully OFF (value 0) during sleep mode / absence instead of hiding the image behind a black overlay; it is silently skipped when the sysfs file is absent (e.g. Windows).
 - **RTSP viewer:** QML `MediaPlayer` + `VideoOutput` with a retry overlay and auto-fallback to photos.
 - **SignalNet integration:** TCP client connects to SignalNet home automation controller. Receives temperature, alerts (fire/water/gas), bell notifications, and media commands. Sends heartbeat pulse. Control bar shows temperature when connected.
 - **Control bar:** Bottom bar with 7 buttons (time, date, temperature, video, settings, tasks, calendar). Time/date update every second via `m_tickTimer`. Temperature shows when SignalNet is connected. Bar is hidden during sleep.

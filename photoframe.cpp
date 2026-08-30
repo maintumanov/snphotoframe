@@ -634,7 +634,7 @@ void PhotoFrameBackend::setSleepMode(bool sleep) {
     m_isSleeping = sleep;
     if (sleep) {
         m_slideshowTimer->stop();
-        applyBacklight(kSleepBrightness);
+        applyBacklight(kSleepBacklight);
     } else {
         applyBacklight(m_config.brightness);
         if (!m_playlist.isEmpty()) {
