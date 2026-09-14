@@ -337,6 +337,9 @@ private:
     bool m_isSleeping = false;
     bool m_destroyed = false;
     bool m_scanning = false;
+    int m_scanRetries = 0;
+    static const int kMaxScanRetries = 4;
+    static const int kScanRetryDelayMs = 8000;
     QString m_currentImagePath;
     QString m_currentFileName;
     QString m_currentFileDate;

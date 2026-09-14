@@ -934,10 +934,18 @@ void PhotoFrameBackend::onScanFinished(const QStringList& list) {
     m_scanning = false;
     qInfo() << "Scan finished: found" << list.size() << "files";
     if (list.isEmpty()) {
+        if (m_scanRetries < kMaxScanRetries) {
+            ++m_scanRetries;
+            qInfo() << "Scan empty, retry" << m_scanRetries << "/" << kMaxScanRetries;
+            QTimer::singleShot(kScanRetryDelayMs, this, &PhotoFrameBackend::connectAndScan);
+            return;
+        }
+        m_scanRetries = 0;
         qInfo() << "No files found, showing settings";
         setPageIndex(1);
         return;
     }
+    m_scanRetries = 0;
     m_playlist = list;
     PlaylistManager::save(m_playlist);
     if (m_config.shuffle) {
