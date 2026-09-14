@@ -5,7 +5,8 @@
 #include <QTime>
 #include <QSettings>
 
-struct SmbConfig {
+struct SmbConfig
+{
     QString server, share, user, pass, smbVers = "3.0";
     bool useGuest = true, shuffle = true;
     int interval = 60000;
@@ -14,7 +15,7 @@ struct SmbConfig {
     bool useSchedule = false;
     QTime wakeTime = QTime(7, 0);   // Время включения по умолчанию
     QTime sleepTime = QTime(23, 0); // Время выключения по умолчанию
-    
+
     // RTSP камера
     bool useRtsp = false;
     QString rtspUrl;
@@ -47,8 +48,8 @@ struct SmbConfig {
     // Дисплей (DSI подсветка)
     int brightness = 100;
 
-    void load(const QString& fileName = "photoframe.ini");
-    void save(const QString& fileName = "photoframe.ini") const;
+    void load(const QString &fileName = "photoframe.ini");
+    void save(const QString &fileName = "photoframe.ini") const;
 };
 
 #endif // CONFIG_H

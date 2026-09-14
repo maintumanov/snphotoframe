@@ -7,39 +7,28 @@
 #include <QCoreApplication>
 
 // Freshness windows per metric: telemetry older than this is treated as invalid.
-namespace {
+namespace
+{
 constexpr qint64 kTempFreshSec = 4 * 3600;
-constexpr qint64 kHumFreshSec  = 2 * 3600;
-constexpr qint64 kCo2FreshSec  = 30 * 60;
+constexpr qint64 kHumFreshSec = 2 * 3600;
+constexpr qint64 kCo2FreshSec = 30 * 60;
 constexpr qint64 kDustFreshSec = 30 * 60;
-constexpr qint64 kVarFreshSec  = 1 * 3600;
-}
+constexpr qint64 kVarFreshSec = 1 * 3600;
+} // namespace
 
 SignalNet::SignalNet(QObject *parent)
-    : QObject(parent)
-    , m_interface(new QsnInterface(this))
-    , m_tcpClient(new QsnTCPclient(this))
-    , m_udpClient(new QsnUDPclient(this))
-    , m_pulseTimer(new QTimer(this))
-    , m_connected(false)
-    , m_userDisconnected(false)
-    , m_useUdp(false)
-    , m_deviceAddress(3999)
-    , m_temperature(0)
-    , m_thermostatSetting(0)
-    , m_alertSeverity(0)
-    , m_absenceMode(false)
+    : QObject(parent), m_interface(new QsnInterface(this)), m_tcpClient(new QsnTCPclient(this)), m_udpClient(new QsnUDPclient(this)), m_pulseTimer(new QTimer(this)), m_connected(false), m_userDisconnected(false), m_useUdp(false), m_deviceAddress(3999), m_temperature(0), m_thermostatSetting(0), m_alertSeverity(0), m_absenceMode(false)
 {
     // Wire up the QSN bus — both clients feed into the interface,
     // and the interface broadcasts back to both (same as snpcagent mainwindow.cpp)
-    connect(m_tcpClient, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
-            m_interface, SLOT(snBUSInput(QSNContainer,QObject*)));
-    connect(m_udpClient, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
-            m_interface, SLOT(snBUSInput(QSNContainer,QObject*)));
-    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
-            m_tcpClient, SLOT(snBUSInput(QSNContainer,QObject*)));
-    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
-            m_udpClient, SLOT(snBUSInput(QSNContainer,QObject*)));
+    connect(m_tcpClient, SIGNAL(snBUSOutput(QSNContainer, QObject *)),
+            m_interface, SLOT(snBUSInput(QSNContainer, QObject *)));
+    connect(m_udpClient, SIGNAL(snBUSOutput(QSNContainer, QObject *)),
+            m_interface, SLOT(snBUSInput(QSNContainer, QObject *)));
+    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer, QObject *)),
+            m_tcpClient, SLOT(snBUSInput(QSNContainer, QObject *)));
+    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer, QObject *)),
+            m_udpClient, SLOT(snBUSInput(QSNContainer, QObject *)));
 
     // Application listens to interface events
     connect(m_interface, &QsnInterface::eventConnect,
@@ -49,12 +38,9 @@ SignalNet::SignalNet(QObject *parent)
     connect(m_interface, &QsnInterface::eventNumInput,
             this, &SignalNet::onEventNumInput);
 
-
-
     // Pulse request handler (Command=2 from QsnInterface::secondOut timer)
-    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer,QObject*)),
-            this, SLOT(onSnBUSInput(QSNContainer,QObject*)));
-
+    connect(m_interface, SIGNAL(snBUSOutput(QSNContainer, QObject *)),
+            this, SLOT(onSnBUSInput(QSNContainer, QObject *)));
 
     connect(m_interface, SIGNAL(eventAddressChange()), this, SLOT(saveSettings()));
 
@@ -108,39 +94,81 @@ SignalNet::~SignalNet()
     disconnectFromServer();
 }
 
-bool SignalNet::isConnected() const { return m_connected; }
-qreal SignalNet::temperature() const { return m_temperature; }
-qreal SignalNet::thermostatSetting() const { return m_thermostatSetting; }
-QString SignalNet::lastAlert() const { return m_lastAlert; }
-int SignalNet::alertSeverity() const { return m_alertSeverity; }
-bool SignalNet::absenceMode() const { return m_absenceMode; }
-bool SignalNet::useUdp() const { return m_useUdp; }
-bool SignalNet::isTemperatureValid() const {
+bool SignalNet::isConnected() const
+{
+    return m_connected;
+}
+qreal SignalNet::temperature() const
+{
+    return m_temperature;
+}
+qreal SignalNet::thermostatSetting() const
+{
+    return m_thermostatSetting;
+}
+QString SignalNet::lastAlert() const
+{
+    return m_lastAlert;
+}
+int SignalNet::alertSeverity() const
+{
+    return m_alertSeverity;
+}
+bool SignalNet::absenceMode() const
+{
+    return m_absenceMode;
+}
+bool SignalNet::useUdp() const
+{
+    return m_useUdp;
+}
+bool SignalNet::isTemperatureValid() const
+{
     return m_lastTemperatureTime.isValid() &&
            m_lastTemperatureTime.secsTo(QDateTime::currentDateTime()) < kTempFreshSec;
 }
-qreal SignalNet::temperatureOut() const { return m_temperatureOut; }
-bool SignalNet::isTemperatureOutValid() const {
+qreal SignalNet::temperatureOut() const
+{
+    return m_temperatureOut;
+}
+bool SignalNet::isTemperatureOutValid() const
+{
     return m_lastTemperatureOutTime.isValid() &&
            m_lastTemperatureOutTime.secsTo(QDateTime::currentDateTime()) < kTempFreshSec;
 }
-qreal SignalNet::humidity() const { return m_humidity; }
-bool SignalNet::isHumidityValid() const {
+qreal SignalNet::humidity() const
+{
+    return m_humidity;
+}
+bool SignalNet::isHumidityValid() const
+{
     return m_lastHumidityTime.isValid() &&
            m_lastHumidityTime.secsTo(QDateTime::currentDateTime()) < kHumFreshSec;
 }
-int SignalNet::co2() const { return m_co2; }
-bool SignalNet::isCo2Valid() const {
+int SignalNet::co2() const
+{
+    return m_co2;
+}
+bool SignalNet::isCo2Valid() const
+{
     return m_lastCo2Time.isValid() &&
            m_lastCo2Time.secsTo(QDateTime::currentDateTime()) < kCo2FreshSec;
 }
-int SignalNet::dust() const { return m_dust; }
-bool SignalNet::isDustValid() const {
+int SignalNet::dust() const
+{
+    return m_dust;
+}
+bool SignalNet::isDustValid() const
+{
     return m_lastDustTime.isValid() &&
            m_lastDustTime.secsTo(QDateTime::currentDateTime()) < kDustFreshSec;
 }
-qreal SignalNet::var() const { return m_var; }
-bool SignalNet::isVarValid() const {
+qreal SignalNet::var() const
+{
+    return m_var;
+}
+bool SignalNet::isVarValid() const
+{
     return m_lastVarTime.isValid() &&
            m_lastVarTime.secsTo(QDateTime::currentDateTime()) < kVarFreshSec;
 }
@@ -161,7 +189,7 @@ void SignalNet::setTransport(bool useUdp)
 }
 
 void SignalNet::connectToServer(const QString &address, quint16 port,
-                                 const QString &login, const QString &password)
+                                const QString &login, const QString &password)
 {
     qInfo() << "SignalNet: connecting TCP to" << address << ":" << port;
 
@@ -185,7 +213,7 @@ void SignalNet::connectToServer(const QString &address, quint16 port,
 }
 
 void SignalNet::connectToServerUDP(const QString &address, quint16 serverPort,
-                                    quint16 localPort, const QString &key)
+                                   quint16 localPort, const QString &key)
 {
     qInfo() << "SignalNet: connecting UDP to" << address << ":" << serverPort;
 
@@ -362,169 +390,169 @@ void SignalNet::onSnBUSInput(QSNContainer container, QObject *sender)
 void SignalNet::onEventNumInput(int numInput, QByteArray data)
 {
     switch (numInput) {
-    case input_temp_out: {
-        qreal temp = QSNRAWtoTemperature(&data, 1);
-        bool wasValid = isTemperatureOutValid();
-        m_lastTemperatureOutTime = QDateTime::currentDateTime();
-        if (m_temperatureOut != temp) {
-            m_temperatureOut = temp;
-            emit temperatureOutChanged();
-            qInfo() << "SignalNet: outdoor temperature =" << temp << "\u00b0C";
-        }
-        if (!wasValid) emit temperatureOutValidChanged();
-        break;
-    }
-    case input_temperature: {
-        qreal temp = QSNRAWtoTemperature(&data, 1);
-        bool wasValid = isTemperatureValid();
-        m_lastTemperatureTime = QDateTime::currentDateTime();
-        if (m_temperature != temp) {
-            m_temperature = temp;
-            emit temperatureChanged();
-            qInfo() << "SignalNet: temperature =" << temp << "\u00b0C";
-        }
-        if (!wasValid) emit temperatureValidChanged();
-        break;
-    }
-    case input_alert: {
-        if (data.size() >= 1) {
-            QSNNotification notif = QSNRAWtoNotification(&data, 1);
-            QString alertText = QSNAlertTypeLabel(notif.notificationType);
-            if (!alertText.isEmpty()) {
-                m_lastAlert = alertText;
-                m_alertSeverity = (notif.notificationType % 2 == 1) ? 1 : 0;
-                emit lastAlertChanged();
-                emit alertSeverityChanged(m_alertSeverity);
-                emit alertReceived(m_lastAlert, m_alertSeverity);
-                qInfo() << "SignalNet: alert:" << m_lastAlert;
+        case input_temp_out: {
+            qreal temp = QSNRAWtoTemperature(&data, 1);
+            bool wasValid = isTemperatureOutValid();
+            m_lastTemperatureOutTime = QDateTime::currentDateTime();
+            if (m_temperatureOut != temp) {
+                m_temperatureOut = temp;
+                emit temperatureOutChanged();
+                qInfo() << "SignalNet: outdoor temperature =" << temp << "\u00b0C";
             }
+            if (!wasValid) emit temperatureOutValidChanged();
+            break;
         }
-        break;
-    }
-    case input_alarm: {
-        if (data.size() >= 1) {
-            QSNNotification notif = QSNRAWtoNotification(&data, 1);
-            QString alarmText = QSNSecurityAlertTypeLabel(notif.notificationType);
-            if (!alarmText.isEmpty()) {
-                m_lastAlert = alarmText;
-                m_alertSeverity = (notif.notificationType == 12) ? 2 : 0;
-                emit lastAlertChanged();
-                emit alertSeverityChanged(m_alertSeverity);
-                emit alertReceived(m_lastAlert, m_alertSeverity);
+        case input_temperature: {
+            qreal temp = QSNRAWtoTemperature(&data, 1);
+            bool wasValid = isTemperatureValid();
+            m_lastTemperatureTime = QDateTime::currentDateTime();
+            if (m_temperature != temp) {
+                m_temperature = temp;
+                emit temperatureChanged();
+                qInfo() << "SignalNet: temperature =" << temp << "\u00b0C";
             }
+            if (!wasValid) emit temperatureValidChanged();
+            break;
         }
-        break;
-    }
-    case input_bell: {
-        m_lastAlert = QString::fromUtf8("\u0417\u0432\u043e\u043d\u043e\u043a");
-        m_alertSeverity = 0;
-        qInfo() << "SignalNet:" << m_lastAlert;
-        emit lastAlertChanged();
-        emit alertSeverityChanged(0);
-        emit alertReceived(m_lastAlert, 0);
-        emit bellPressed(m_lastAlert);
-        break;
-    }
-    case input_playstop: {
-        qInfo() << "SignalNet: play/stop";
-        emit mediaPlayPause();
-        break;
-    }
-    case input_pause: {
-        qInfo() << "SignalNet: pause";
-        emit mediaPlayPause();
-        break;
-    }
-    case input_next: {
-        qInfo() << "SignalNet: next";
-        emit mediaNext();
-        break;
-    }
-    case input_previous: {
-        qInfo() << "SignalNet: previous";
-        emit mediaPrevious();
-        break;
-    }
-    case input_right: {
-        qInfo() << "SignalNet: right";
-        emit navRight();
-        break;
-    }
-    case input_left: {
-        qInfo() << "SignalNet: left";
-        emit navLeft();
-        break;
-    }
-    case input_hym: {
-        qreal hum = QSNRAWtoHumidity(&data, 1);
-        bool wasValid = isHumidityValid();
-        m_lastHumidityTime = QDateTime::currentDateTime();
-        if (m_humidity != hum) {
-            m_humidity = hum;
-            emit humidityChanged();
-            qInfo() << "SignalNet: humidity =" << hum << "%";
+        case input_alert: {
+            if (data.size() >= 1) {
+                QSNNotification notif = QSNRAWtoNotification(&data, 1);
+                QString alertText = QSNAlertTypeLabel(notif.notificationType);
+                if (!alertText.isEmpty()) {
+                    m_lastAlert = alertText;
+                    m_alertSeverity = (notif.notificationType % 2 == 1) ? 1 : 0;
+                    emit lastAlertChanged();
+                    emit alertSeverityChanged(m_alertSeverity);
+                    emit alertReceived(m_lastAlert, m_alertSeverity);
+                    qInfo() << "SignalNet: alert:" << m_lastAlert;
+                }
+            }
+            break;
         }
-        if (!wasValid) emit humidityValidChanged();
-        break;
-    }
-    case input_co2: {
-        int val = static_cast<int>(QSNRAWtoUInt16(&data, 1));
-        bool wasValid = isCo2Valid();
-        m_lastCo2Time = QDateTime::currentDateTime();
-        if (m_co2 != val) {
-            m_co2 = val;
-            emit co2Changed();
-            qInfo() << "SignalNet: CO2 =" << val << "ppm";
+        case input_alarm: {
+            if (data.size() >= 1) {
+                QSNNotification notif = QSNRAWtoNotification(&data, 1);
+                QString alarmText = QSNSecurityAlertTypeLabel(notif.notificationType);
+                if (!alarmText.isEmpty()) {
+                    m_lastAlert = alarmText;
+                    m_alertSeverity = (notif.notificationType == 12) ? 2 : 0;
+                    emit lastAlertChanged();
+                    emit alertSeverityChanged(m_alertSeverity);
+                    emit alertReceived(m_lastAlert, m_alertSeverity);
+                }
+            }
+            break;
         }
-        if (!wasValid) emit co2ValidChanged();
-        break;
-    }
-    case input_dust: {
-        // Type 37 (DUST): proper QSN decode via QSNRAWToVariant
-        QVariant v = QSNRAWToVariant(&data);
-        int val = v.isValid() ? v.toInt() : static_cast<int>(QSNRAWtoUInt16(&data, 1));
-        bool wasValid = isDustValid();
-        m_lastDustTime = QDateTime::currentDateTime();
-        if (m_dust != val) {
-            m_dust = val;
-            emit dustChanged();
-            qInfo() << "SignalNet: dust =" << val << "ug/m3";
+        case input_bell: {
+            m_lastAlert = QString::fromUtf8("\u0417\u0432\u043e\u043d\u043e\u043a");
+            m_alertSeverity = 0;
+            qInfo() << "SignalNet:" << m_lastAlert;
+            emit lastAlertChanged();
+            emit alertSeverityChanged(0);
+            emit alertReceived(m_lastAlert, 0);
+            emit bellPressed(m_lastAlert);
+            break;
         }
-        if (!wasValid) emit dustValidChanged();
-        break;
-    }
-    case input_var: {
-        // Type 63 (VARIANT): data[0] contains the actual type,
-        // QSNRAWToVariant dispatches to the correct decoder
-        QVariant v = QSNRAWToVariant(&data);
-        qreal val = v.isValid() ? v.toReal() : 0;
-        bool wasValid = isVarValid();
-        m_lastVarTime = QDateTime::currentDateTime();
-        if (m_var != val) {
-            m_var = val;
-            emit varChanged();
-            qInfo() << "SignalNet: var =" << val << "(type" << (data.size() > 0 ? static_cast<int>(static_cast<quint8>(data.at(0))) : -1) << ")";
+        case input_playstop: {
+            qInfo() << "SignalNet: play/stop";
+            emit mediaPlayPause();
+            break;
         }
-        if (!wasValid) emit varValidChanged();
-        break;
-    }
-    case input_statusAbsence: {
-        if (!m_absenceMode) {
-            m_absenceMode = true;
-            emit absenceModeChanged();
-            qInfo() << "SignalNet: absence mode ON";
+        case input_pause: {
+            qInfo() << "SignalNet: pause";
+            emit mediaPlayPause();
+            break;
         }
-        break;
-    }
-    case input_statusNoAbsence: {
-        if (m_absenceMode) {
-            m_absenceMode = false;
-            emit absenceModeChanged();
-            qInfo() << "SignalNet: absence mode OFF";
+        case input_next: {
+            qInfo() << "SignalNet: next";
+            emit mediaNext();
+            break;
         }
-        break;
-    }
-    default:
-        break;
+        case input_previous: {
+            qInfo() << "SignalNet: previous";
+            emit mediaPrevious();
+            break;
+        }
+        case input_right: {
+            qInfo() << "SignalNet: right";
+            emit navRight();
+            break;
+        }
+        case input_left: {
+            qInfo() << "SignalNet: left";
+            emit navLeft();
+            break;
+        }
+        case input_hym: {
+            qreal hum = QSNRAWtoHumidity(&data, 1);
+            bool wasValid = isHumidityValid();
+            m_lastHumidityTime = QDateTime::currentDateTime();
+            if (m_humidity != hum) {
+                m_humidity = hum;
+                emit humidityChanged();
+                qInfo() << "SignalNet: humidity =" << hum << "%";
+            }
+            if (!wasValid) emit humidityValidChanged();
+            break;
+        }
+        case input_co2: {
+            int val = static_cast<int>(QSNRAWtoUInt16(&data, 1));
+            bool wasValid = isCo2Valid();
+            m_lastCo2Time = QDateTime::currentDateTime();
+            if (m_co2 != val) {
+                m_co2 = val;
+                emit co2Changed();
+                qInfo() << "SignalNet: CO2 =" << val << "ppm";
+            }
+            if (!wasValid) emit co2ValidChanged();
+            break;
+        }
+        case input_dust: {
+            // Type 37 (DUST): proper QSN decode via QSNRAWToVariant
+            QVariant v = QSNRAWToVariant(&data);
+            int val = v.isValid() ? v.toInt() : static_cast<int>(QSNRAWtoUInt16(&data, 1));
+            bool wasValid = isDustValid();
+            m_lastDustTime = QDateTime::currentDateTime();
+            if (m_dust != val) {
+                m_dust = val;
+                emit dustChanged();
+                qInfo() << "SignalNet: dust =" << val << "ug/m3";
+            }
+            if (!wasValid) emit dustValidChanged();
+            break;
+        }
+        case input_var: {
+            // Type 63 (VARIANT): data[0] contains the actual type,
+            // QSNRAWToVariant dispatches to the correct decoder
+            QVariant v = QSNRAWToVariant(&data);
+            qreal val = v.isValid() ? v.toReal() : 0;
+            bool wasValid = isVarValid();
+            m_lastVarTime = QDateTime::currentDateTime();
+            if (m_var != val) {
+                m_var = val;
+                emit varChanged();
+                qInfo() << "SignalNet: var =" << val << "(type" << (data.size() > 0 ? static_cast<int>(static_cast<quint8>(data.at(0))) : -1) << ")";
+            }
+            if (!wasValid) emit varValidChanged();
+            break;
+        }
+        case input_statusAbsence: {
+            if (!m_absenceMode) {
+                m_absenceMode = true;
+                emit absenceModeChanged();
+                qInfo() << "SignalNet: absence mode ON";
+            }
+            break;
+        }
+        case input_statusNoAbsence: {
+            if (m_absenceMode) {
+                m_absenceMode = false;
+                emit absenceModeChanged();
+                qInfo() << "SignalNet: absence mode OFF";
+            }
+            break;
+        }
+        default:
+            break;
     }
 }

@@ -15,17 +15,20 @@
 #include "config.h"
 class SignalNet;
 
-class ImageProvider : public QQuickImageProvider {
+class ImageProvider : public QQuickImageProvider
+{
 public:
     ImageProvider();
-    QImage requestImage(const QString& id, QSize* size, const QSize& requestedSize) override;
-    void setCurrentImage(const QImage& img);
+    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
+    void setCurrentImage(const QImage &img);
+
 private:
     mutable QMutex m_mutex;
     QImage m_current;
 };
 
-class PhotoFrameBackend : public QObject {
+class PhotoFrameBackend : public QObject
+{
     Q_OBJECT
 
     Q_PROPERTY(QString currentTime READ currentTime NOTIFY tick)
@@ -98,11 +101,13 @@ class PhotoFrameBackend : public QObject {
     Q_PROPERTY(int brightness READ brightness WRITE setBrightness NOTIFY configChanged)
     Q_PROPERTY(bool backlightAvailable READ backlightAvailable)
 
-
 public:
-    explicit PhotoFrameBackend(QObject* parent = nullptr);
+    explicit PhotoFrameBackend(QObject *parent = nullptr);
     ~PhotoFrameBackend();
-    void setImageProvider(ImageProvider* p) { m_imageProvider = p; }
+    void setImageProvider(ImageProvider *p)
+    {
+        m_imageProvider = p;
+    }
 
     QString currentTime() const;
     QString currentDate() const;
@@ -113,13 +118,13 @@ public:
     void setPageIndex(int p);
 
     QString server() const;
-    void setServer(const QString& v);
+    void setServer(const QString &v);
     QString share() const;
-    void setShare(const QString& v);
+    void setShare(const QString &v);
     QString user() const;
-    void setUser(const QString& v);
+    void setUser(const QString &v);
     QString pass() const;
-    void setPass(const QString& v);
+    void setPass(const QString &v);
     int interval() const;
     void setInterval(int v);
     bool shuffle() const;
@@ -130,30 +135,30 @@ public:
     bool useSchedule() const;
     void setUseSchedule(bool v);
     QString wakeTimeStr() const;
-    void setWakeTimeStr(const QString& v);
+    void setWakeTimeStr(const QString &v);
     QString sleepTimeStr() const;
-    void setSleepTimeStr(const QString& v);
+    void setSleepTimeStr(const QString &v);
 
     bool useGuest() const;
     void setUseGuest(bool v);
     QString smbVers() const;
-    void setSmbVers(const QString& v);
+    void setSmbVers(const QString &v);
     bool useRtsp() const;
     void setUseRtsp(bool v);
     QString rtspUrl() const;
-    void setRtspUrl(const QString& v);
+    void setRtspUrl(const QString &v);
 
     bool useRtsp2() const;
     void setUseRtsp2(bool v);
     QString rtspUrl2() const;
-    void setRtspUrl2(const QString& v);
+    void setRtspUrl2(const QString &v);
     int camera2Duration() const;
     void setCamera2Duration(int v);
 
     bool useRtsp3() const;
     void setUseRtsp3(bool v);
     QString rtspUrl3() const;
-    void setRtspUrl3(const QString& v);
+    void setRtspUrl3(const QString &v);
     int camera3Duration() const;
     void setCamera3Duration(int v);
 
@@ -170,37 +175,43 @@ public:
     Q_INVOKABLE void fallbackToPhotos();
     Q_INVOKABLE QStringList tasks() const;
 
-    bool isSleeping() const { return m_isSleeping; }
-    int playlistSize() const { return m_playlist.size(); }
+    bool isSleeping() const
+    {
+        return m_isSleeping;
+    }
+    int playlistSize() const
+    {
+        return m_playlist.size();
+    }
 
     // Called by QML MediaPlayer to report state back to backend
     Q_INVOKABLE void onRtspPlaying();
-    Q_INVOKABLE void onRtspError(const QString& msg);
+    Q_INVOKABLE void onRtspError(const QString &msg);
     Q_INVOKABLE void stopRtsp();
     Q_INVOKABLE void onRtsp2Playing();
-    Q_INVOKABLE void onRtsp2Error(const QString& msg);
+    Q_INVOKABLE void onRtsp2Error(const QString &msg);
     Q_INVOKABLE void stopRtsp2();
     Q_INVOKABLE void onRtsp3Playing();
-    Q_INVOKABLE void onRtsp3Error(const QString& msg);
+    Q_INVOKABLE void onRtsp3Error(const QString &msg);
     Q_INVOKABLE void stopRtsp3();
 
     // SignalNet
     bool useSignalNet() const;
     void setUseSignalNet(bool v);
     QString signalNetServer() const;
-    void setSignalNetServer(const QString& v);
+    void setSignalNetServer(const QString &v);
     int signalNetPort() const;
     void setSignalNetPort(int v);
     QString signalNetLogin() const;
-    void setSignalNetLogin(const QString& v);
+    void setSignalNetLogin(const QString &v);
     QString signalNetPass() const;
-    void setSignalNetPass(const QString& v);
+    void setSignalNetPass(const QString &v);
     bool signalNetUseUdp() const;
     void setSignalNetUseUdp(bool v);
     int signalNetUdpLocalPort() const;
     void setSignalNetUdpLocalPort(int v);
     QString signalNetUdpKey() const;
-    void setSignalNetUdpKey(const QString& v);
+    void setSignalNetUdpKey(const QString &v);
     bool signalNetConnected() const;
     qreal signalNetTemperature() const;
     QString signalNetAlert() const;
@@ -231,7 +242,13 @@ public:
     Q_INVOKABLE void sendAction1();
     Q_INVOKABLE void sendAction2();
 
-enum RtspState { RtspIdle = 0, RtspConnecting, RtspPlaying, RtspError };
+    enum RtspState
+    {
+        RtspIdle = 0,
+        RtspConnecting,
+        RtspPlaying,
+        RtspError
+    };
     Q_ENUM(RtspState)
 
     int rtspState() const;
@@ -248,26 +265,26 @@ signals:
     void configChanged();
     void sleepChanged(bool sleeping);
     void showSettingsPage();
-    void rtspStarted(const QString& url);
+    void rtspStarted(const QString &url);
 
     // RTSP lifecycle signals — QML binds MediaPlayer/overlay to these
-    void rtspPlay(const QString& url);
+    void rtspPlay(const QString &url);
     void rtspStopPlayer();
-    void rtspShowOverlay(const QString& msg);
+    void rtspShowOverlay(const QString &msg);
     void rtspHideOverlay();
     void rtspStateChanged();
     void rtspErrorMsgChanged();
 
-    void rtsp2Play(const QString& url);
+    void rtsp2Play(const QString &url);
     void rtsp2StopPlayer();
-    void rtsp2ShowOverlay(const QString& msg);
+    void rtsp2ShowOverlay(const QString &msg);
     void rtsp2HideOverlay();
     void rtsp2StateChanged();
     void rtsp2ErrorMsgChanged();
 
-    void rtsp3Play(const QString& url);
+    void rtsp3Play(const QString &url);
     void rtsp3StopPlayer();
-    void rtsp3ShowOverlay(const QString& msg);
+    void rtsp3ShowOverlay(const QString &msg);
     void rtsp3HideOverlay();
     void rtsp3StateChanged();
     void rtsp3ErrorMsgChanged();
@@ -291,7 +308,7 @@ signals:
 
 private slots:
     void onTick();
-    void onScanFinished(const QStringList& list);
+    void onScanFinished(const QStringList &list);
     void onRtspRetryTimeout();
     void onRtspFallbackTimeout();
     void onCameraTimeout();
@@ -322,14 +339,14 @@ private:
     void forceStopRtsp2();
     void forceStopRtsp3();
 
-    QTimer* m_tickTimer;
-    QTimer* m_slideshowTimer;
-    QTimer* m_rtspRetryTimer;
-    QTimer* m_rtspFallbackTimer;
-    QTimer* m_rtsp2RetryTimer = nullptr;
-    QTimer* m_rtsp2FallbackTimer = nullptr;
-    QTimer* m_rtsp3RetryTimer = nullptr;
-    QTimer* m_rtsp3FallbackTimer = nullptr;
+    QTimer *m_tickTimer;
+    QTimer *m_slideshowTimer;
+    QTimer *m_rtspRetryTimer;
+    QTimer *m_rtspFallbackTimer;
+    QTimer *m_rtsp2RetryTimer = nullptr;
+    QTimer *m_rtsp2FallbackTimer = nullptr;
+    QTimer *m_rtsp3RetryTimer = nullptr;
+    QTimer *m_rtsp3FallbackTimer = nullptr;
     SmbConfig m_config;
     QStringList m_playlist;
     int m_idx = 0;
@@ -361,17 +378,16 @@ private:
     int m_rtsp3Session = 0;
     QString m_rtsp3ErrorMsg;
 
-    ImageProvider* m_imageProvider = nullptr;
-    SignalNet* m_signalNet = nullptr;
-    QSoundEffect* m_alertSound = nullptr;
-    QTimer* m_cameraTimer = nullptr;
-    QTimer* m_camera2Timer = nullptr;
-    QTimer* m_camera3Timer = nullptr;
+    ImageProvider *m_imageProvider = nullptr;
+    SignalNet *m_signalNet = nullptr;
+    QSoundEffect *m_alertSound = nullptr;
+    QTimer *m_cameraTimer = nullptr;
+    QTimer *m_camera2Timer = nullptr;
+    QTimer *m_camera3Timer = nullptr;
 
     int m_backlightMax = 255;
     bool m_backlightAvailable = false;
     static const int kSleepBacklight = 0; // выключить подсветку полностью (не прятать изображение)
-
 };
 
 #endif // PHOTOFRAME_H

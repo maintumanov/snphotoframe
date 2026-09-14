@@ -1,0 +1,38 @@
+# Style matching qsninterface.cpp (SignalNet library):
+# functions/classes open brace on its own line, control statements keep
+# the brace on the same line, 4-space indent, no nesting reflow.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+ColumnLimit: 0
+AccessModifierOffset: -4
+PointerAlignment: Right
+DerivePointerAlignment: false
+BreakBeforeBinaryOperators: None
+SortIncludes: false
+SpaceBeforeParens: ControlStatements
+IndentCaseLabels: true
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterControlStatement: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+AllowShortIfStatementsOnASingleLine: Always
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+DeriveLineEnding: true

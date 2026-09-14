@@ -20,11 +20,11 @@ class QsnUDPclient;
 #define FirmwareVersionMinor1 0
 #define FirmwareVersionMinor2 0
 #define FirmwareVersionMinor3 0
-//#define Version 1, 0, 0
+// #define Version 1, 0, 0
 #define IO_count 126
 
 // -- cвойства --
-#define sundry_darkIcon 2,0
+#define sundry_darkIcon 2, 0
 
 // -- выхода --
 #define output_temperatureSetting 0
@@ -52,8 +52,6 @@ class QsnUDPclient;
 #define input_left 16
 
 // -- отладка --
-
-
 
 // Output command indices (use #define values)
 #define SnOutputTemperatureSetting output_temperatureSetting

@@ -43,7 +43,7 @@ void WebServer::onNewConnection()
 
 void WebServer::onReadyRead()
 {
-    QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
+    QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (!socket) return;
     m_buffers[socket].append(socket->readAll());
     if (processRequests(socket) > 0 && m_buffers.contains(socket))
@@ -78,7 +78,7 @@ int WebServer::processRequests(QTcpSocket *socket)
 
 void WebServer::onDisconnected()
 {
-    QTcpSocket *socket = qobject_cast<QTcpSocket*>(sender());
+    QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (socket) {
         m_buffers.remove(socket);
         socket->deleteLater();
@@ -139,7 +139,7 @@ void WebServer::handleRequest(QTcpSocket *socket, const QByteArray &request)
                 sendResponse(socket, 200, "text/html; charset=utf-8", resFile.readAll());
             } else {
                 sendResponse(socket, 200, "text/html; charset=utf-8",
-                    "<html><body><h1>DigitalPhotoFrame</h1><p>Web UI not found. Place index.html in web/ folder.</p></body></html>");
+                             "<html><body><h1>DigitalPhotoFrame</h1><p>Web UI not found. Place index.html in web/ folder.</p></body></html>");
             }
         }
     } else {
@@ -150,11 +150,19 @@ void WebServer::handleRequest(QTcpSocket *socket, const QByteArray &request)
 void WebServer::sendResponse(QTcpSocket *socket, int code, const QString &contentType, const QByteArray &body)
 {
     QByteArray statusText;
-    switch(code) {
-        case 200: statusText = "OK"; break;
-        case 400: statusText = "Bad Request"; break;
-        case 404: statusText = "Not Found"; break;
-        default: statusText = "Error"; break;
+    switch (code) {
+        case 200:
+            statusText = "OK";
+            break;
+        case 400:
+            statusText = "Bad Request";
+            break;
+        case 404:
+            statusText = "Not Found";
+            break;
+        default:
+            statusText = "Error";
+            break;
     }
 
     QByteArray response;
@@ -289,12 +297,16 @@ void WebServer::handleRtspPost(QTcpSocket *socket, const QByteArray &body)
     const bool on = o.value("on").toBool(true);
     if (on) {
         if (cam == 2) m_backend->reconnectRtsp2();
-        else if (cam == 3) m_backend->reconnectRtsp3();
-        else m_backend->reconnectRtsp();
+        else if (cam == 3)
+            m_backend->reconnectRtsp3();
+        else
+            m_backend->reconnectRtsp();
     } else {
         if (cam == 2) m_backend->stopRtsp2();
-        else if (cam == 3) m_backend->stopRtsp3();
-        else m_backend->stopRtsp();
+        else if (cam == 3)
+            m_backend->stopRtsp3();
+        else
+            m_backend->stopRtsp();
     }
     sendResponse(socket, 200, "application/json", "{\"ok\":true}");
 }

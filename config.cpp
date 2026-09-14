@@ -1,6 +1,7 @@
 #include "config.h"
 
-void SmbConfig::load(const QString& fileName) {
+void SmbConfig::load(const QString &fileName)
+{
     QSettings s(fileName, QSettings::IniFormat);
     server = s.value("smb/server").toString();
     share = s.value("smb/share").toString();
@@ -41,7 +42,8 @@ void SmbConfig::load(const QString& fileName) {
     brightness = s.value("display/brightness", 100).toInt();
 }
 
-void SmbConfig::save(const QString& fileName) const {
+void SmbConfig::save(const QString &fileName) const
+{
     QSettings s(fileName, QSettings::IniFormat);
     s.setValue("smb/server", server);
     s.setValue("smb/share", share);

@@ -17,8 +17,14 @@ public:
     explicit WebServer(PhotoFrameBackend *backend, QObject *parent = nullptr);
     bool start(quint16 port = 8080);
     void stop();
-    bool isRunning() const { return m_server && m_server->isListening(); }
-    quint16 port() const { return m_port; }
+    bool isRunning() const
+    {
+        return m_server && m_server->isListening();
+    }
+    quint16 port() const
+    {
+        return m_port;
+    }
 
 signals:
     void settingsChanged();
@@ -42,7 +48,7 @@ private:
     QTcpServer *m_server;
     PhotoFrameBackend *m_backend;
     quint16 m_port;
-    QHash<QTcpSocket*, QByteArray> m_buffers;
+    QHash<QTcpSocket *, QByteArray> m_buffers;
 };
 
 #endif // WEBSERVER_H

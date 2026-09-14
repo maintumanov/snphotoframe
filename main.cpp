@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     qInfo() << "Application started";
 
     PhotoFrameBackend backend;
-    ImageProvider* imgProvider = new ImageProvider;
+    ImageProvider *imgProvider = new ImageProvider;
 
     QQmlApplicationEngine engine;
     engine.addImageProvider("current", imgProvider);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
-    QQuickWindow* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+    QQuickWindow *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
     if (window) {
         window->showFullScreen();
     }

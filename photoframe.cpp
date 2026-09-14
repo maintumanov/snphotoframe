@@ -25,9 +25,12 @@
 // --- ImageProvider ---
 
 ImageProvider::ImageProvider()
-    : QQuickImageProvider(QQuickImageProvider::Image) {}
+    : QQuickImageProvider(QQuickImageProvider::Image)
+{
+}
 
-QImage ImageProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize) {
+QImage ImageProvider::requestImage(const QString &id, QSize *size, const QSize &requestedSize)
+{
     Q_UNUSED(id);
     QMutexLocker lock(&m_mutex);
     if (size) *size = m_current.size();
@@ -36,14 +39,15 @@ QImage ImageProvider::requestImage(const QString& id, QSize* size, const QSize& 
     return m_current;
 }
 
-void ImageProvider::setCurrentImage(const QImage& img) {
+void ImageProvider::setCurrentImage(const QImage &img)
+{
     QMutexLocker lock(&m_mutex);
     m_current = img;
 }
 
 // --- PhotoFrameBackend ---
 
-PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
+PhotoFrameBackend::PhotoFrameBackend(QObject *parent)
     : QObject(parent)
 {
     {
@@ -59,8 +63,8 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
         }
     }
     qInfo() << "Config loaded: server=" << m_config.server << "share=" << m_config.share
-             << "useRtsp=" << m_config.useRtsp << "rtspUrl=" << m_config.rtspUrl
-             << "useGuest=" << m_config.useGuest;
+            << "useRtsp=" << m_config.useRtsp << "rtspUrl=" << m_config.rtspUrl
+            << "useGuest=" << m_config.useGuest;
 
     initBacklight();
 
@@ -108,24 +112,30 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
         wav.append("RIFF", 4);
         int dataSize = samples * 2;
         int fileSize = 36 + dataSize;
-        wav.append(reinterpret_cast<const char*>(&fileSize), 4);
+        wav.append(reinterpret_cast<const char *>(&fileSize), 4);
         wav.append("WAVE", 4);
         wav.append("fmt ", 4);
         int fmtSize = 16;
-        wav.append(reinterpret_cast<const char*>(&fmtSize), 4);
-        short fmt = 1; wav.append(reinterpret_cast<const char*>(&fmt), 2);
-        short ch = 1; wav.append(reinterpret_cast<const char*>(&ch), 2);
-        int sr = sampleRate; wav.append(reinterpret_cast<const char*>(&sr), 4);
-        int byteRate = sampleRate * 2; wav.append(reinterpret_cast<const char*>(&byteRate), 4);
-        short blockAlign = 2; wav.append(reinterpret_cast<const char*>(&blockAlign), 2);
-        short bits = 16; wav.append(reinterpret_cast<const char*>(&bits), 2);
+        wav.append(reinterpret_cast<const char *>(&fmtSize), 4);
+        short fmt = 1;
+        wav.append(reinterpret_cast<const char *>(&fmt), 2);
+        short ch = 1;
+        wav.append(reinterpret_cast<const char *>(&ch), 2);
+        int sr = sampleRate;
+        wav.append(reinterpret_cast<const char *>(&sr), 4);
+        int byteRate = sampleRate * 2;
+        wav.append(reinterpret_cast<const char *>(&byteRate), 4);
+        short blockAlign = 2;
+        wav.append(reinterpret_cast<const char *>(&blockAlign), 2);
+        short bits = 16;
+        wav.append(reinterpret_cast<const char *>(&bits), 2);
         wav.append("data", 4);
-        wav.append(reinterpret_cast<const char*>(&dataSize), 4);
+        wav.append(reinterpret_cast<const char *>(&dataSize), 4);
         // Sine wave samples
         for (int i = 0; i < samples; i++) {
             double t = (double)i / sampleRate;
             short sample = (short)(16000.0 * sin(2.0 * M_PI * freq * t));
-            wav.append(reinterpret_cast<const char*>(&sample), 2);
+            wav.append(reinterpret_cast<const char *>(&sample), 2);
         }
         QString tmpPath = QDir::tempPath() + "/photoframe_alert.wav";
         QFile tmpFile(tmpPath);
@@ -226,122 +236,403 @@ PhotoFrameBackend::PhotoFrameBackend(QObject* parent)
     });
 }
 
-PhotoFrameBackend::~PhotoFrameBackend() {
+PhotoFrameBackend::~PhotoFrameBackend()
+{
     m_destroyed = true;
     m_tickTimer->stop();
     m_slideshowTimer->stop();
 }
 
-QString PhotoFrameBackend::currentTime() const {
+QString PhotoFrameBackend::currentTime() const
+{
     return QTime::currentTime().toString("HH:mm");
 }
 
-QString PhotoFrameBackend::currentDate() const {
+QString PhotoFrameBackend::currentDate() const
+{
     return QDate::currentDate().toString("dd.MM.yyyy");
 }
 
-QString PhotoFrameBackend::currentImagePath() const {
+QString PhotoFrameBackend::currentImagePath() const
+{
     return m_currentImagePath;
 }
 
-QString PhotoFrameBackend::currentFileName() const {
+QString PhotoFrameBackend::currentFileName() const
+{
     return m_currentFileName;
 }
 
-QString PhotoFrameBackend::currentFileDate() const {
+QString PhotoFrameBackend::currentFileDate() const
+{
     return m_currentFileDate;
 }
 
-int PhotoFrameBackend::pageIndex() const { return m_pageIndex; }
-void PhotoFrameBackend::setPageIndex(int p) {
-    if (m_pageIndex != p) { m_pageIndex = p; emit pageIndexChanged(); }
+int PhotoFrameBackend::pageIndex() const
+{
+    return m_pageIndex;
+}
+void PhotoFrameBackend::setPageIndex(int p)
+{
+    if (m_pageIndex != p) {
+        m_pageIndex = p;
+        emit pageIndexChanged();
+    }
 }
 
 // Settings getters
-QString PhotoFrameBackend::server() const { return m_config.server; }
-QString PhotoFrameBackend::share() const { return m_config.share; }
-QString PhotoFrameBackend::user() const { return m_config.user; }
-QString PhotoFrameBackend::pass() const { return m_config.pass; }
-int PhotoFrameBackend::interval() const { return m_config.interval / 1000; }
-bool PhotoFrameBackend::shuffle() const { return m_config.shuffle; }
-bool PhotoFrameBackend::useSchedule() const { return m_config.useSchedule; }
-QString PhotoFrameBackend::wakeTimeStr() const { return m_config.wakeTime.toString("HH:mm"); }
-QString PhotoFrameBackend::sleepTimeStr() const { return m_config.sleepTime.toString("HH:mm"); }
-bool PhotoFrameBackend::useGuest() const { return m_config.useGuest; }
-QString PhotoFrameBackend::smbVers() const { return m_config.smbVers; }
-bool PhotoFrameBackend::useRtsp() const { return m_config.useRtsp; }
-QString PhotoFrameBackend::rtspUrl() const { return m_config.rtspUrl; }
+QString PhotoFrameBackend::server() const
+{
+    return m_config.server;
+}
+QString PhotoFrameBackend::share() const
+{
+    return m_config.share;
+}
+QString PhotoFrameBackend::user() const
+{
+    return m_config.user;
+}
+QString PhotoFrameBackend::pass() const
+{
+    return m_config.pass;
+}
+int PhotoFrameBackend::interval() const
+{
+    return m_config.interval / 1000;
+}
+bool PhotoFrameBackend::shuffle() const
+{
+    return m_config.shuffle;
+}
+bool PhotoFrameBackend::useSchedule() const
+{
+    return m_config.useSchedule;
+}
+QString PhotoFrameBackend::wakeTimeStr() const
+{
+    return m_config.wakeTime.toString("HH:mm");
+}
+QString PhotoFrameBackend::sleepTimeStr() const
+{
+    return m_config.sleepTime.toString("HH:mm");
+}
+bool PhotoFrameBackend::useGuest() const
+{
+    return m_config.useGuest;
+}
+QString PhotoFrameBackend::smbVers() const
+{
+    return m_config.smbVers;
+}
+bool PhotoFrameBackend::useRtsp() const
+{
+    return m_config.useRtsp;
+}
+QString PhotoFrameBackend::rtspUrl() const
+{
+    return m_config.rtspUrl;
+}
 
-int PhotoFrameBackend::rtspState() const { return m_rtspState; }
-QString PhotoFrameBackend::rtspErrorMsg() const { return m_rtspErrorMsg; }
+int PhotoFrameBackend::rtspState() const
+{
+    return m_rtspState;
+}
+QString PhotoFrameBackend::rtspErrorMsg() const
+{
+    return m_rtspErrorMsg;
+}
 
 // Settings setters
-void PhotoFrameBackend::setServer(const QString& v) { if (m_config.server != v) { m_config.server = v; emit configChanged(); } }
-void PhotoFrameBackend::setShare(const QString& v) { if (m_config.share != v) { m_config.share = v; emit configChanged(); } }
-void PhotoFrameBackend::setUser(const QString& v) { if (m_config.user != v) { m_config.user = v; emit configChanged(); } }
-void PhotoFrameBackend::setPass(const QString& v) { if (m_config.pass != v) { m_config.pass = v; emit configChanged(); } }
-void PhotoFrameBackend::setInterval(int v) { int ms = v * 1000; if (m_config.interval != ms) { m_config.interval = ms; emit configChanged(); } }
-void PhotoFrameBackend::setShuffle(bool v) { if (m_config.shuffle != v) { m_config.shuffle = v; emit configChanged(); } }
-bool PhotoFrameBackend::useActionButtons() const { return m_config.useActionButtons; }
-void PhotoFrameBackend::setUseActionButtons(bool v) { if (m_config.useActionButtons != v) { m_config.useActionButtons = v; emit configChanged(); } }
-void PhotoFrameBackend::setUseSchedule(bool v) { if (m_config.useSchedule != v) { m_config.useSchedule = v; emit configChanged(); } }
-void PhotoFrameBackend::setWakeTimeStr(const QString& v) {
-    QTime t = QTime::fromString(v, "HH:mm");
-    if (t.isValid() && m_config.wakeTime != t) { m_config.wakeTime = t; emit configChanged(); }
+void PhotoFrameBackend::setServer(const QString &v)
+{
+    if (m_config.server != v) {
+        m_config.server = v;
+        emit configChanged();
+    }
 }
-void PhotoFrameBackend::setSleepTimeStr(const QString& v) {
-    QTime t = QTime::fromString(v, "HH:mm");
-    if (t.isValid() && m_config.sleepTime != t) { m_config.sleepTime = t; emit configChanged(); }
+void PhotoFrameBackend::setShare(const QString &v)
+{
+    if (m_config.share != v) {
+        m_config.share = v;
+        emit configChanged();
+    }
 }
-void PhotoFrameBackend::setUseGuest(bool v) { if (m_config.useGuest != v) { m_config.useGuest = v; emit configChanged(); } }
-void PhotoFrameBackend::setSmbVers(const QString& v) { if (m_config.smbVers != v) { m_config.smbVers = v; emit configChanged(); } }
-void PhotoFrameBackend::setUseRtsp(bool v) { if (m_config.useRtsp != v) { m_config.useRtsp = v; emit configChanged(); } }
-void PhotoFrameBackend::setRtspUrl(const QString& v) { if (m_config.rtspUrl != v) { m_config.rtspUrl = v; emit configChanged(); } }
+void PhotoFrameBackend::setUser(const QString &v)
+{
+    if (m_config.user != v) {
+        m_config.user = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setPass(const QString &v)
+{
+    if (m_config.pass != v) {
+        m_config.pass = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setInterval(int v)
+{
+    int ms = v * 1000;
+    if (m_config.interval != ms) {
+        m_config.interval = ms;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setShuffle(bool v)
+{
+    if (m_config.shuffle != v) {
+        m_config.shuffle = v;
+        emit configChanged();
+    }
+}
+bool PhotoFrameBackend::useActionButtons() const
+{
+    return m_config.useActionButtons;
+}
+void PhotoFrameBackend::setUseActionButtons(bool v)
+{
+    if (m_config.useActionButtons != v) {
+        m_config.useActionButtons = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setUseSchedule(bool v)
+{
+    if (m_config.useSchedule != v) {
+        m_config.useSchedule = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setWakeTimeStr(const QString &v)
+{
+    QTime t = QTime::fromString(v, "HH:mm");
+    if (t.isValid() && m_config.wakeTime != t) {
+        m_config.wakeTime = t;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSleepTimeStr(const QString &v)
+{
+    QTime t = QTime::fromString(v, "HH:mm");
+    if (t.isValid() && m_config.sleepTime != t) {
+        m_config.sleepTime = t;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setUseGuest(bool v)
+{
+    if (m_config.useGuest != v) {
+        m_config.useGuest = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSmbVers(const QString &v)
+{
+    if (m_config.smbVers != v) {
+        m_config.smbVers = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setUseRtsp(bool v)
+{
+    if (m_config.useRtsp != v) {
+        m_config.useRtsp = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setRtspUrl(const QString &v)
+{
+    if (m_config.rtspUrl != v) {
+        m_config.rtspUrl = v;
+        emit configChanged();
+    }
+}
 
-bool PhotoFrameBackend::useRtsp2() const { return m_config.useRtsp2; }
-QString PhotoFrameBackend::rtspUrl2() const { return m_config.rtspUrl2; }
-int PhotoFrameBackend::camera2Duration() const { return m_config.camera2Duration; }
-void PhotoFrameBackend::setUseRtsp2(bool v) { if (m_config.useRtsp2 != v) { m_config.useRtsp2 = v; emit configChanged(); } }
-void PhotoFrameBackend::setRtspUrl2(const QString& v) { if (m_config.rtspUrl2 != v) { m_config.rtspUrl2 = v; emit configChanged(); } }
-void PhotoFrameBackend::setCamera2Duration(int v) { if (m_config.camera2Duration != v) { m_config.camera2Duration = v; emit configChanged(); } }
+bool PhotoFrameBackend::useRtsp2() const
+{
+    return m_config.useRtsp2;
+}
+QString PhotoFrameBackend::rtspUrl2() const
+{
+    return m_config.rtspUrl2;
+}
+int PhotoFrameBackend::camera2Duration() const
+{
+    return m_config.camera2Duration;
+}
+void PhotoFrameBackend::setUseRtsp2(bool v)
+{
+    if (m_config.useRtsp2 != v) {
+        m_config.useRtsp2 = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setRtspUrl2(const QString &v)
+{
+    if (m_config.rtspUrl2 != v) {
+        m_config.rtspUrl2 = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setCamera2Duration(int v)
+{
+    if (m_config.camera2Duration != v) {
+        m_config.camera2Duration = v;
+        emit configChanged();
+    }
+}
 
-bool PhotoFrameBackend::useRtsp3() const { return m_config.useRtsp3; }
-QString PhotoFrameBackend::rtspUrl3() const { return m_config.rtspUrl3; }
-int PhotoFrameBackend::camera3Duration() const { return m_config.camera3Duration; }
-void PhotoFrameBackend::setUseRtsp3(bool v) { if (m_config.useRtsp3 != v) { m_config.useRtsp3 = v; emit configChanged(); } }
-void PhotoFrameBackend::setRtspUrl3(const QString& v) { if (m_config.rtspUrl3 != v) { m_config.rtspUrl3 = v; emit configChanged(); } }
-void PhotoFrameBackend::setCamera3Duration(int v) { if (m_config.camera3Duration != v) { m_config.camera3Duration = v; emit configChanged(); } }
+bool PhotoFrameBackend::useRtsp3() const
+{
+    return m_config.useRtsp3;
+}
+QString PhotoFrameBackend::rtspUrl3() const
+{
+    return m_config.rtspUrl3;
+}
+int PhotoFrameBackend::camera3Duration() const
+{
+    return m_config.camera3Duration;
+}
+void PhotoFrameBackend::setUseRtsp3(bool v)
+{
+    if (m_config.useRtsp3 != v) {
+        m_config.useRtsp3 = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setRtspUrl3(const QString &v)
+{
+    if (m_config.rtspUrl3 != v) {
+        m_config.rtspUrl3 = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setCamera3Duration(int v)
+{
+    if (m_config.camera3Duration != v) {
+        m_config.camera3Duration = v;
+        emit configChanged();
+    }
+}
 
-int PhotoFrameBackend::rtsp2State() const { return m_rtsp2State; }
-QString PhotoFrameBackend::rtsp2ErrorMsg() const { return m_rtsp2ErrorMsg; }
-int PhotoFrameBackend::rtsp3State() const { return m_rtsp3State; }
-QString PhotoFrameBackend::rtsp3ErrorMsg() const { return m_rtsp3ErrorMsg; }
+int PhotoFrameBackend::rtsp2State() const
+{
+    return m_rtsp2State;
+}
+QString PhotoFrameBackend::rtsp2ErrorMsg() const
+{
+    return m_rtsp2ErrorMsg;
+}
+int PhotoFrameBackend::rtsp3State() const
+{
+    return m_rtsp3State;
+}
+QString PhotoFrameBackend::rtsp3ErrorMsg() const
+{
+    return m_rtsp3ErrorMsg;
+}
 
 // SignalNet getters
-bool PhotoFrameBackend::useSignalNet() const { return m_config.useSignalNet; }
-QString PhotoFrameBackend::signalNetServer() const { return m_config.signalNetServer; }
-int PhotoFrameBackend::signalNetPort() const { return m_config.signalNetPort; }
-QString PhotoFrameBackend::signalNetLogin() const { return m_config.signalNetLogin; }
-QString PhotoFrameBackend::signalNetPass() const { return m_config.signalNetPass; }
-bool PhotoFrameBackend::signalNetConnected() const { return m_signalNet && m_signalNet->isConnected(); }
-qreal PhotoFrameBackend::signalNetTemperature() const { return m_signalNet ? m_signalNet->temperature() : 0; }
-QString PhotoFrameBackend::signalNetAlert() const { return m_signalNet ? m_signalNet->lastAlert() : QString(); }
-int PhotoFrameBackend::signalNetAlertSeverity() const { return m_signalNet ? m_signalNet->alertSeverity() : 0; }
-bool PhotoFrameBackend::signalNetTemperatureValid() const { return m_signalNet && m_signalNet->isTemperatureValid(); }
-qreal PhotoFrameBackend::signalNetTemperatureOut() const { return m_signalNet ? m_signalNet->temperatureOut() : 0; }
-bool PhotoFrameBackend::signalNetTemperatureOutValid() const { return m_signalNet && m_signalNet->isTemperatureOutValid(); }
-qreal PhotoFrameBackend::signalNetHumidity() const { return m_signalNet ? m_signalNet->humidity() : 0; }
-bool PhotoFrameBackend::signalNetHumidityValid() const { return m_signalNet && m_signalNet->isHumidityValid(); }
-int PhotoFrameBackend::signalNetCo2() const { return m_signalNet ? m_signalNet->co2() : 0; }
-bool PhotoFrameBackend::signalNetCo2Valid() const { return m_signalNet && m_signalNet->isCo2Valid(); }
-int PhotoFrameBackend::signalNetDust() const { return m_signalNet ? m_signalNet->dust() : 0; }
-bool PhotoFrameBackend::signalNetDustValid() const { return m_signalNet && m_signalNet->isDustValid(); }
-qreal PhotoFrameBackend::signalNetVar() const { return m_signalNet ? m_signalNet->var() : 0; }
-bool PhotoFrameBackend::signalNetVarValid() const { return m_signalNet && m_signalNet->isVarValid(); }
-int PhotoFrameBackend::cameraDuration() const { return m_config.cameraDuration; }
-void PhotoFrameBackend::setCameraDuration(int v) { if (m_config.cameraDuration != v) { m_config.cameraDuration = v; emit configChanged(); } }
-int PhotoFrameBackend::signalNetDeviceAddress() const { return m_config.signalNetDeviceAddress; }
-void PhotoFrameBackend::setSignalNetDeviceAddress(int v) {
+bool PhotoFrameBackend::useSignalNet() const
+{
+    return m_config.useSignalNet;
+}
+QString PhotoFrameBackend::signalNetServer() const
+{
+    return m_config.signalNetServer;
+}
+int PhotoFrameBackend::signalNetPort() const
+{
+    return m_config.signalNetPort;
+}
+QString PhotoFrameBackend::signalNetLogin() const
+{
+    return m_config.signalNetLogin;
+}
+QString PhotoFrameBackend::signalNetPass() const
+{
+    return m_config.signalNetPass;
+}
+bool PhotoFrameBackend::signalNetConnected() const
+{
+    return m_signalNet && m_signalNet->isConnected();
+}
+qreal PhotoFrameBackend::signalNetTemperature() const
+{
+    return m_signalNet ? m_signalNet->temperature() : 0;
+}
+QString PhotoFrameBackend::signalNetAlert() const
+{
+    return m_signalNet ? m_signalNet->lastAlert() : QString();
+}
+int PhotoFrameBackend::signalNetAlertSeverity() const
+{
+    return m_signalNet ? m_signalNet->alertSeverity() : 0;
+}
+bool PhotoFrameBackend::signalNetTemperatureValid() const
+{
+    return m_signalNet && m_signalNet->isTemperatureValid();
+}
+qreal PhotoFrameBackend::signalNetTemperatureOut() const
+{
+    return m_signalNet ? m_signalNet->temperatureOut() : 0;
+}
+bool PhotoFrameBackend::signalNetTemperatureOutValid() const
+{
+    return m_signalNet && m_signalNet->isTemperatureOutValid();
+}
+qreal PhotoFrameBackend::signalNetHumidity() const
+{
+    return m_signalNet ? m_signalNet->humidity() : 0;
+}
+bool PhotoFrameBackend::signalNetHumidityValid() const
+{
+    return m_signalNet && m_signalNet->isHumidityValid();
+}
+int PhotoFrameBackend::signalNetCo2() const
+{
+    return m_signalNet ? m_signalNet->co2() : 0;
+}
+bool PhotoFrameBackend::signalNetCo2Valid() const
+{
+    return m_signalNet && m_signalNet->isCo2Valid();
+}
+int PhotoFrameBackend::signalNetDust() const
+{
+    return m_signalNet ? m_signalNet->dust() : 0;
+}
+bool PhotoFrameBackend::signalNetDustValid() const
+{
+    return m_signalNet && m_signalNet->isDustValid();
+}
+qreal PhotoFrameBackend::signalNetVar() const
+{
+    return m_signalNet ? m_signalNet->var() : 0;
+}
+bool PhotoFrameBackend::signalNetVarValid() const
+{
+    return m_signalNet && m_signalNet->isVarValid();
+}
+int PhotoFrameBackend::cameraDuration() const
+{
+    return m_config.cameraDuration;
+}
+void PhotoFrameBackend::setCameraDuration(int v)
+{
+    if (m_config.cameraDuration != v) {
+        m_config.cameraDuration = v;
+        emit configChanged();
+    }
+}
+int PhotoFrameBackend::signalNetDeviceAddress() const
+{
+    return m_config.signalNetDeviceAddress;
+}
+void PhotoFrameBackend::setSignalNetDeviceAddress(int v)
+{
     quint16 addr = static_cast<quint16>(v);
     if (m_config.signalNetDeviceAddress != addr) {
         m_config.signalNetDeviceAddress = addr;
@@ -350,9 +641,13 @@ void PhotoFrameBackend::setSignalNetDeviceAddress(int v) {
     }
 }
 
-int PhotoFrameBackend::brightness() const { return m_config.brightness; }
+int PhotoFrameBackend::brightness() const
+{
+    return m_config.brightness;
+}
 
-void PhotoFrameBackend::setBrightness(int v) {
+void PhotoFrameBackend::setBrightness(int v)
+{
     v = qBound(0, v, 100);
     if (m_config.brightness != v) {
         m_config.brightness = v;
@@ -361,11 +656,13 @@ void PhotoFrameBackend::setBrightness(int v) {
     }
 }
 
-bool PhotoFrameBackend::backlightAvailable() const {
+bool PhotoFrameBackend::backlightAvailable() const
+{
     return m_backlightAvailable;
 }
 
-void PhotoFrameBackend::initBacklight() {
+void PhotoFrameBackend::initBacklight()
+{
 #ifdef Q_OS_LINUX
     m_backlightAvailable = QFile::exists("/sys/class/backlight/10-0045/brightness");
     if (m_backlightAvailable) {
@@ -383,7 +680,8 @@ void PhotoFrameBackend::initBacklight() {
 #endif
 }
 
-void PhotoFrameBackend::applyBacklight(int pct) {
+void PhotoFrameBackend::applyBacklight(int pct)
+{
     if (!m_backlightAvailable) return;
     int value = qBound(0, (pct * m_backlightMax + 50) / 100, m_backlightMax);
     QFile file("/sys/class/backlight/10-0045/brightness");
@@ -393,14 +691,15 @@ void PhotoFrameBackend::applyBacklight(int pct) {
     }
 }
 
-
-void PhotoFrameBackend::onCameraTimeout() {
+void PhotoFrameBackend::onCameraTimeout()
+{
     qInfo() << "Camera OFF — timeout";
     stopRtsp();
 }
 
 // --- Camera 2 ---
-void PhotoFrameBackend::startRtsp2() {
+void PhotoFrameBackend::startRtsp2()
+{
     if (!m_config.useRtsp2 || m_config.rtspUrl2.isEmpty()) return;
     forceStopRtsp();
     forceStopRtsp3();
@@ -417,7 +716,8 @@ void PhotoFrameBackend::startRtsp2() {
     emit rtsp2Play(m_config.rtspUrl2);
 }
 
-void PhotoFrameBackend::forceStopRtsp2() {
+void PhotoFrameBackend::forceStopRtsp2()
+{
     ++m_rtsp2Session;
     m_rtsp2RetryTimer->stop();
     m_rtsp2FallbackTimer->stop();
@@ -427,24 +727,28 @@ void PhotoFrameBackend::forceStopRtsp2() {
     emit rtsp2HideOverlay();
 }
 
-void PhotoFrameBackend::stopRtsp2() {
+void PhotoFrameBackend::stopRtsp2()
+{
     forceStopRtsp2();
     resumeSlideshow();
 }
 
-void PhotoFrameBackend::reconnectRtsp2() {
+void PhotoFrameBackend::reconnectRtsp2()
+{
     stopRtsp2();
     startRtsp2();
 }
 
-void PhotoFrameBackend::setRtsp2State(RtspState s) {
+void PhotoFrameBackend::setRtsp2State(RtspState s)
+{
     if (m_rtsp2State != s) {
         m_rtsp2State = s;
         emit rtsp2StateChanged();
     }
 }
 
-void PhotoFrameBackend::onRtsp2Playing() {
+void PhotoFrameBackend::onRtsp2Playing()
+{
     m_rtsp2FallbackTimer->stop();
     m_rtsp2RetryTimer->stop();
     m_rtsp2RetryCount = 0;
@@ -456,7 +760,8 @@ void PhotoFrameBackend::onRtsp2Playing() {
     });
 }
 
-void PhotoFrameBackend::onRtsp2Error(const QString& msg) {
+void PhotoFrameBackend::onRtsp2Error(const QString &msg)
+{
     if (m_rtsp2State == RtspIdle) return;
     m_rtsp2FallbackTimer->stop();
     m_rtsp2RetryCount++;
@@ -471,7 +776,8 @@ void PhotoFrameBackend::onRtsp2Error(const QString& msg) {
     }
 }
 
-void PhotoFrameBackend::onRtsp2RetryTimeout() {
+void PhotoFrameBackend::onRtsp2RetryTimeout()
+{
     if (m_rtsp2State == RtspIdle) return;
     m_rtsp2ErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435... \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtsp2RetryCount + 1).arg(kMaxRtspRetries);
     emit rtsp2ErrorMsgChanged();
@@ -481,7 +787,8 @@ void PhotoFrameBackend::onRtsp2RetryTimeout() {
     m_rtsp2FallbackTimer->start(5000);
 }
 
-void PhotoFrameBackend::onRtsp2FallbackTimeout() {
+void PhotoFrameBackend::onRtsp2FallbackTimeout()
+{
     stopRtsp2();
     m_rtsp2ErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443...");
     emit rtsp2ErrorMsgChanged();
@@ -489,13 +796,15 @@ void PhotoFrameBackend::onRtsp2FallbackTimeout() {
     QTimer::singleShot(500, this, [this]() { fallbackToPhotos(); });
 }
 
-void PhotoFrameBackend::onCamera2Timeout() {
+void PhotoFrameBackend::onCamera2Timeout()
+{
     qInfo() << "Camera2 OFF — timeout";
     stopRtsp2();
 }
 
 // --- Camera 3 ---
-void PhotoFrameBackend::startRtsp3() {
+void PhotoFrameBackend::startRtsp3()
+{
     if (!m_config.useRtsp3 || m_config.rtspUrl3.isEmpty()) return;
     forceStopRtsp();
     forceStopRtsp2();
@@ -512,7 +821,8 @@ void PhotoFrameBackend::startRtsp3() {
     emit rtsp3Play(m_config.rtspUrl3);
 }
 
-void PhotoFrameBackend::forceStopRtsp3() {
+void PhotoFrameBackend::forceStopRtsp3()
+{
     ++m_rtsp3Session;
     m_rtsp3RetryTimer->stop();
     m_rtsp3FallbackTimer->stop();
@@ -522,24 +832,28 @@ void PhotoFrameBackend::forceStopRtsp3() {
     emit rtsp3HideOverlay();
 }
 
-void PhotoFrameBackend::stopRtsp3() {
+void PhotoFrameBackend::stopRtsp3()
+{
     forceStopRtsp3();
     resumeSlideshow();
 }
 
-void PhotoFrameBackend::reconnectRtsp3() {
+void PhotoFrameBackend::reconnectRtsp3()
+{
     stopRtsp3();
     startRtsp3();
 }
 
-void PhotoFrameBackend::setRtsp3State(RtspState s) {
+void PhotoFrameBackend::setRtsp3State(RtspState s)
+{
     if (m_rtsp3State != s) {
         m_rtsp3State = s;
         emit rtsp3StateChanged();
     }
 }
 
-void PhotoFrameBackend::onRtsp3Playing() {
+void PhotoFrameBackend::onRtsp3Playing()
+{
     m_rtsp3FallbackTimer->stop();
     m_rtsp3RetryTimer->stop();
     m_rtsp3RetryCount = 0;
@@ -551,7 +865,8 @@ void PhotoFrameBackend::onRtsp3Playing() {
     });
 }
 
-void PhotoFrameBackend::onRtsp3Error(const QString& msg) {
+void PhotoFrameBackend::onRtsp3Error(const QString &msg)
+{
     if (m_rtsp3State == RtspIdle) return;
     m_rtsp3FallbackTimer->stop();
     m_rtsp3RetryCount++;
@@ -566,7 +881,8 @@ void PhotoFrameBackend::onRtsp3Error(const QString& msg) {
     }
 }
 
-void PhotoFrameBackend::onRtsp3RetryTimeout() {
+void PhotoFrameBackend::onRtsp3RetryTimeout()
+{
     if (m_rtsp3State == RtspIdle) return;
     m_rtsp3ErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435... \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtsp3RetryCount + 1).arg(kMaxRtspRetries);
     emit rtsp3ErrorMsgChanged();
@@ -576,7 +892,8 @@ void PhotoFrameBackend::onRtsp3RetryTimeout() {
     m_rtsp3FallbackTimer->start(5000);
 }
 
-void PhotoFrameBackend::onRtsp3FallbackTimeout() {
+void PhotoFrameBackend::onRtsp3FallbackTimeout()
+{
     stopRtsp3();
     m_rtsp3ErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443...");
     emit rtsp3ErrorMsgChanged();
@@ -584,26 +901,85 @@ void PhotoFrameBackend::onRtsp3FallbackTimeout() {
     QTimer::singleShot(500, this, [this]() { fallbackToPhotos(); });
 }
 
-void PhotoFrameBackend::onCamera3Timeout() {
+void PhotoFrameBackend::onCamera3Timeout()
+{
     qInfo() << "Camera3 OFF — timeout";
     stopRtsp3();
 }
 
 // SignalNet setters
-void PhotoFrameBackend::setUseSignalNet(bool v) { if (m_config.useSignalNet != v) { m_config.useSignalNet = v; emit configChanged(); } }
-void PhotoFrameBackend::setSignalNetServer(const QString& v) { if (m_config.signalNetServer != v) { m_config.signalNetServer = v; emit configChanged(); } }
-void PhotoFrameBackend::setSignalNetPort(int v) { if (m_config.signalNetPort != static_cast<quint16>(v)) { m_config.signalNetPort = static_cast<quint16>(v); emit configChanged(); } }
-void PhotoFrameBackend::setSignalNetLogin(const QString& v) { if (m_config.signalNetLogin != v) { m_config.signalNetLogin = v; emit configChanged(); } }
-void PhotoFrameBackend::setSignalNetPass(const QString& v) { if (m_config.signalNetPass != v) { m_config.signalNetPass = v; emit configChanged(); } }
+void PhotoFrameBackend::setUseSignalNet(bool v)
+{
+    if (m_config.useSignalNet != v) {
+        m_config.useSignalNet = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSignalNetServer(const QString &v)
+{
+    if (m_config.signalNetServer != v) {
+        m_config.signalNetServer = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSignalNetPort(int v)
+{
+    if (m_config.signalNetPort != static_cast<quint16>(v)) {
+        m_config.signalNetPort = static_cast<quint16>(v);
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSignalNetLogin(const QString &v)
+{
+    if (m_config.signalNetLogin != v) {
+        m_config.signalNetLogin = v;
+        emit configChanged();
+    }
+}
+void PhotoFrameBackend::setSignalNetPass(const QString &v)
+{
+    if (m_config.signalNetPass != v) {
+        m_config.signalNetPass = v;
+        emit configChanged();
+    }
+}
 
-bool PhotoFrameBackend::signalNetUseUdp() const { return m_config.useUdp; }
-void PhotoFrameBackend::setSignalNetUseUdp(bool v) { if (m_config.useUdp != v) { m_config.useUdp = v; emit configChanged(); } }
-int PhotoFrameBackend::signalNetUdpLocalPort() const { return m_config.signalNetUdpLocalPort; }
-void PhotoFrameBackend::setSignalNetUdpLocalPort(int v) { if (m_config.signalNetUdpLocalPort != static_cast<quint16>(v)) { m_config.signalNetUdpLocalPort = static_cast<quint16>(v); emit configChanged(); } }
-QString PhotoFrameBackend::signalNetUdpKey() const { return m_config.signalNetUdpKey; }
-void PhotoFrameBackend::setSignalNetUdpKey(const QString& v) { if (m_config.signalNetUdpKey != v) { m_config.signalNetUdpKey = v; emit configChanged(); } }
+bool PhotoFrameBackend::signalNetUseUdp() const
+{
+    return m_config.useUdp;
+}
+void PhotoFrameBackend::setSignalNetUseUdp(bool v)
+{
+    if (m_config.useUdp != v) {
+        m_config.useUdp = v;
+        emit configChanged();
+    }
+}
+int PhotoFrameBackend::signalNetUdpLocalPort() const
+{
+    return m_config.signalNetUdpLocalPort;
+}
+void PhotoFrameBackend::setSignalNetUdpLocalPort(int v)
+{
+    if (m_config.signalNetUdpLocalPort != static_cast<quint16>(v)) {
+        m_config.signalNetUdpLocalPort = static_cast<quint16>(v);
+        emit configChanged();
+    }
+}
+QString PhotoFrameBackend::signalNetUdpKey() const
+{
+    return m_config.signalNetUdpKey;
+}
+void PhotoFrameBackend::setSignalNetUdpKey(const QString &v)
+{
+    if (m_config.signalNetUdpKey != v) {
+        m_config.signalNetUdpKey = v;
+        emit configChanged();
+    }
+}
 
-void PhotoFrameBackend::connectSignalNet() {
+void PhotoFrameBackend::connectSignalNet()
+{
     if (!m_signalNet) return;
     if (m_config.useUdp) {
         m_signalNet->connectToServerUDP(m_config.signalNetServer, m_config.signalNetPort,
@@ -614,38 +990,46 @@ void PhotoFrameBackend::connectSignalNet() {
     }
 }
 
-void PhotoFrameBackend::disconnectSignalNet() {
+void PhotoFrameBackend::disconnectSignalNet()
+{
     if (m_signalNet) m_signalNet->disconnectFromServer();
 }
 
-void PhotoFrameBackend::clearSignalNetAlert() {
+void PhotoFrameBackend::clearSignalNetAlert()
+{
     if (m_signalNet) m_signalNet->clearAlert();
 }
 
-void PhotoFrameBackend::sendAction1() {
+void PhotoFrameBackend::sendAction1()
+{
     if (m_signalNet) m_signalNet->sendAction1();
 }
 
-void PhotoFrameBackend::sendAction2() {
+void PhotoFrameBackend::sendAction2()
+{
     if (m_signalNet) m_signalNet->sendAction2();
 }
 
-void PhotoFrameBackend::onTick() {
+void PhotoFrameBackend::onTick()
+{
     emit tick();
     checkSchedule();
 }
 
-void PhotoFrameBackend::checkSchedule() {
+void PhotoFrameBackend::checkSchedule()
+{
     if (!m_config.useSchedule) return;
     QTime now = QTime::currentTime();
     bool awake = m_config.wakeTime <= m_config.sleepTime
-        ? (now >= m_config.wakeTime && now < m_config.sleepTime)
-        : (now >= m_config.wakeTime || now < m_config.sleepTime);
+                     ? (now >= m_config.wakeTime && now < m_config.sleepTime)
+                     : (now >= m_config.wakeTime || now < m_config.sleepTime);
     if (awake && m_isSleeping) setSleepMode(false);
-    else if (!awake && !m_isSleeping) setSleepMode(true);
+    else if (!awake && !m_isSleeping)
+        setSleepMode(true);
 }
 
-void PhotoFrameBackend::setSleepMode(bool sleep) {
+void PhotoFrameBackend::setSleepMode(bool sleep)
+{
     m_isSleeping = sleep;
     if (sleep) {
         stopAllCameras();
@@ -661,7 +1045,8 @@ void PhotoFrameBackend::setSleepMode(bool sleep) {
     emit sleepChanged(sleep);
 }
 
-void PhotoFrameBackend::nextSlide() {
+void PhotoFrameBackend::nextSlide()
+{
     if (m_playlist.isEmpty() || m_isSleeping) {
         qInfo() << "nextSlide skipped: playlist=" << m_playlist.size() << "sleeping=" << m_isSleeping;
         return;
@@ -719,33 +1104,38 @@ void PhotoFrameBackend::nextSlide() {
     });
 }
 
-void PhotoFrameBackend::prevSlide() {
+void PhotoFrameBackend::prevSlide()
+{
     if (m_isSleeping || m_playlist.isEmpty()) return;
     // nextSlide() reads m_idx then does +1, so we need -2 to go back one
     m_idx = (m_idx - 2 + m_playlist.size()) % m_playlist.size();
     nextSlide();
 }
 
-void PhotoFrameBackend::firstSlide() {
+void PhotoFrameBackend::firstSlide()
+{
     if (m_isSleeping || m_playlist.isEmpty()) return;
     m_idx = 0;
     nextSlide();
 }
 
-void PhotoFrameBackend::lastSlide() {
+void PhotoFrameBackend::lastSlide()
+{
     if (m_isSleeping || m_playlist.isEmpty()) return;
     m_idx = m_playlist.size() - 1;
     nextSlide();
 }
 
-void PhotoFrameBackend::toggleSlideshow() {
+void PhotoFrameBackend::toggleSlideshow()
+{
     if (m_slideshowTimer->isActive())
         m_slideshowTimer->stop();
     else if (!m_playlist.isEmpty() && !m_isSleeping)
         m_slideshowTimer->start(m_config.interval);
 }
 
-void PhotoFrameBackend::saveSettings() {
+void PhotoFrameBackend::saveSettings()
+{
     qInfo() << "Saving settings: server=" << m_config.server << "useRtsp=" << m_config.useRtsp;
     m_config.save(QSNHomePath("photoframe").absoluteFilePath("photoframe.ini"));
     PlaylistManager::clear();
@@ -755,7 +1145,8 @@ void PhotoFrameBackend::saveSettings() {
     setPageIndex(0);
 }
 
-void PhotoFrameBackend::connectAndScan() {
+void PhotoFrameBackend::connectAndScan()
+{
     qInfo() << "connectAndScan: server=" << m_config.server << "scanning=" << m_scanning;
     if (m_scanning) {
         qInfo() << "Already scanning, skipping";
@@ -799,13 +1190,15 @@ void PhotoFrameBackend::connectAndScan() {
 #endif
         QStringList files;
         QDirIterator it(scanPath, {"*.jpg", "*.jpeg", "*.png"}, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) files << it.next();
+        while (it.hasNext())
+            files << it.next();
         if (m_destroyed) return;
         QMetaObject::invokeMethod(this, "onScanFinished", Q_ARG(QStringList, files));
     });
 }
 
-void PhotoFrameBackend::resumeSlideshow() {
+void PhotoFrameBackend::resumeSlideshow()
+{
     if (m_isSleeping || m_playlist.isEmpty()) {
         qInfo() << "resumeSlideshow skipped: sleeping=" << m_isSleeping << "playlist=" << m_playlist.size();
         return;
@@ -817,13 +1210,15 @@ void PhotoFrameBackend::resumeSlideshow() {
     nextSlide();
 }
 
-void PhotoFrameBackend::stopAllCameras() {
+void PhotoFrameBackend::stopAllCameras()
+{
     forceStopRtsp();
     forceStopRtsp2();
     forceStopRtsp3();
 }
 
-void PhotoFrameBackend::startRtsp() {
+void PhotoFrameBackend::startRtsp()
+{
     if (!m_config.useRtsp || m_config.rtspUrl.isEmpty()) return;
     forceStopRtsp2();
     forceStopRtsp3();
@@ -841,7 +1236,8 @@ void PhotoFrameBackend::startRtsp() {
     emit rtspPlay(m_config.rtspUrl);
 }
 
-void PhotoFrameBackend::forceStopRtsp() {
+void PhotoFrameBackend::forceStopRtsp()
+{
     ++m_rtspSession;
     m_rtspRetryTimer->stop();
     m_rtspFallbackTimer->stop();
@@ -851,25 +1247,29 @@ void PhotoFrameBackend::forceStopRtsp() {
     emit rtspHideOverlay();
 }
 
-void PhotoFrameBackend::stopRtsp() {
+void PhotoFrameBackend::stopRtsp()
+{
     qInfo() << "RTSP1: stop (state was" << m_rtspState << ")";
     forceStopRtsp();
     resumeSlideshow();
 }
 
-void PhotoFrameBackend::reconnectRtsp() {
+void PhotoFrameBackend::reconnectRtsp()
+{
     stopRtsp();
     startRtsp();
 }
 
-void PhotoFrameBackend::setRtspState(RtspState s) {
+void PhotoFrameBackend::setRtspState(RtspState s)
+{
     if (m_rtspState != s) {
         m_rtspState = s;
         emit rtspStateChanged();
     }
 }
 
-void PhotoFrameBackend::onRtspPlaying() {
+void PhotoFrameBackend::onRtspPlaying()
+{
     qInfo() << "RTSP1: playing (playbackState=Playing)";
     m_rtspFallbackTimer->stop();
     m_rtspRetryTimer->stop();
@@ -882,7 +1282,8 @@ void PhotoFrameBackend::onRtspPlaying() {
     });
 }
 
-void PhotoFrameBackend::onRtspError(const QString& msg) {
+void PhotoFrameBackend::onRtspError(const QString &msg)
+{
     if (m_rtspState == RtspIdle) return; // already stopped
     qInfo() << "RTSP1: error" << msg << "retryCount=" << m_rtspRetryCount;
     m_rtspFallbackTimer->stop();
@@ -899,7 +1300,8 @@ void PhotoFrameBackend::onRtspError(const QString& msg) {
     }
 }
 
-void PhotoFrameBackend::onRtspRetryTimeout() {
+void PhotoFrameBackend::onRtspRetryTimeout()
+{
     if (m_rtspState == RtspIdle) return;
     qInfo() << "RTSP1: retry timeout, reconnecting";
     m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435... \u043f\u043e\u0432\u0442\u043e\u0440 %1/%2").arg(m_rtspRetryCount + 1).arg(kMaxRtspRetries);
@@ -911,7 +1313,8 @@ void PhotoFrameBackend::onRtspRetryTimeout() {
     m_rtspFallbackTimer->start(5000);
 }
 
-void PhotoFrameBackend::onRtspFallbackTimeout() {
+void PhotoFrameBackend::onRtspFallbackTimeout()
+{
     qInfo() << "RTSP1: fallback timeout (no playback) -> photos";
     stopRtsp();
     m_rtspErrorMsg = QString::fromUtf8("\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0441\u0435\u0440\u0432\u0435\u0440\u0443...");
@@ -922,7 +1325,8 @@ void PhotoFrameBackend::onRtspFallbackTimeout() {
     });
 }
 
-void PhotoFrameBackend::fallbackToPhotos() {
+void PhotoFrameBackend::fallbackToPhotos()
+{
     if (m_config.server.isEmpty()) {
         setPageIndex(1);
         return;
@@ -930,7 +1334,8 @@ void PhotoFrameBackend::fallbackToPhotos() {
     connectAndScan();
 }
 
-void PhotoFrameBackend::onScanFinished(const QStringList& list) {
+void PhotoFrameBackend::onScanFinished(const QStringList &list)
+{
     m_scanning = false;
     qInfo() << "Scan finished: found" << list.size() << "files";
     if (list.isEmpty()) {
@@ -958,7 +1363,8 @@ void PhotoFrameBackend::onScanFinished(const QStringList& list) {
     resumeSlideshow();
 }
 
-QStringList PhotoFrameBackend::tasks() const {
+QStringList PhotoFrameBackend::tasks() const
+{
     QStringList result;
     QFile file("tasks.txt");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
